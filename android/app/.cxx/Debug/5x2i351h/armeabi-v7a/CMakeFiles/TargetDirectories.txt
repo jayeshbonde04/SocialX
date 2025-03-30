@@ -1,0 +1,2 @@
+A:/Major Project/test/SocialX/SocialX/android/app/.cxx/Debug/5x2i351h/armeabi-v7a/CMakeFiles/edit_cache.dir
+A:/Major Project/test/SocialX/SocialX/android/app/.cxx/Debug/5x2i351h/armeabi-v7a/CMakeFiles/rebuild_cache.dir

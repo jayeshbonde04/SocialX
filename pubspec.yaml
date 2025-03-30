@@ -1,0 +1,42 @@
+name: socialx
+description: "A new Flutter project."
+
+publish_to: 'none' # Prevent accidental publishing
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+
+  # UI and icons
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.1.0
+
+  # Firebase
+  cloud_firestore: ^5.6.5
+  firebase_core: ^3.11.0
+  firebase_auth: ^5.4.2
+  flutter_bloc: ^9.0.0
+  firebase_storage: ^12.4.4
+
+  # files
+  cached_network_image: ^3.4.1
+  file_picker: ^9.2.0
+  flutter_image_compress: ^2.4.0
+
+  # State management
+  provider: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
