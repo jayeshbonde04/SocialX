@@ -6,6 +6,7 @@ class MyInputAlertBox extends StatelessWidget {
   final String hintText;
   final VoidCallback onPressed;
   final String onPressedText;
+  final int? maxLength;
 
   const MyInputAlertBox({
     super.key,
@@ -13,6 +14,7 @@ class MyInputAlertBox extends StatelessWidget {
     required this.hintText,
     required this.onPressed,
     required this.onPressedText,
+    this.maxLength,
   });
 
   @override
@@ -23,6 +25,7 @@ class MyInputAlertBox extends StatelessWidget {
         controller: textController,
         decoration: InputDecoration(hintText: hintText),
         maxLines: 3,
+        maxLength: maxLength,
       ),
       actions: [
         TextButton(

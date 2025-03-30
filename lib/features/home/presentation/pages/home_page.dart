@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:socialx/features/auth/domain/entities/app_users.dart';
-import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/chats/presentation/pages/display_user.dart';
+import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:socialx/features/posts/presentation/pages/upload_post_page.dart';
+import 'package:socialx/features/posts/presentation/pages/twitter.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import '../../../posts/presentation/components/post_tile.dart';
@@ -113,15 +113,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     switch (index) {
       case 0: // Home
+        setState(() {
+          _selectedIndex = index;
+        });
         // Refresh data when returning to home
         fetchAllPosts();
         fetchFollowing();
@@ -130,26 +129,42 @@ class _HomePageState extends State<HomePage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const SearchPage()),
-        );
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 0; // Reset to home
+          });
+        });
         break;
       case 2: // Add Post
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const UploadPostPage()),
-        );
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 0; // Reset to home
+          });
+        });
         break;
-      case 3: // Messages
+      case 3: // Twitter
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => DisplayUser()),
-        );
+          MaterialPageRoute(builder: (context) => const TwitterPage()),
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 0; // Reset to home
+          });
+        });
         break;
       case 4: // Profile
         Navigator.push(
           context,
           MaterialPageRoute(
               builder: (context) => ProfilePage(uid: currentUser.uid)),
-        );
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 0; // Reset to home
+          });
+        });
         break;
     }
   }
@@ -183,6 +198,19 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.message_rounded, color: Colors.blue),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => DisplayUser()),
+              );
+            },
+            tooltip: 'Messages',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: BlocBuilder<PostCubit, PostState>(
         builder: (context, state) {
@@ -198,9 +226,9 @@ class _HomePageState extends State<HomePage> {
           //loaded
           else if (state is PostsLoaded) {
             final allPosts = state.posts;
-            // Filter posts to only show posts from users you follow
+            // Filter posts to only show regular posts from users you follow
             final filteredPosts = allPosts.where((post) => 
-              following.contains(post.userId)
+              following.contains(post.userId) && post.type == PostType.regular
             ).toList();
 
             if (filteredPosts.isEmpty) {
@@ -234,33 +262,43 @@ class _HomePageState extends State<HomePage> {
                 ),
               );
             }
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: filteredPosts.length,
-              itemBuilder: (context, index) {
-                //get individual posts
-                final post = filteredPosts[index];
-
-                return Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: PostTile(
-                    post: post,
-                    onDeletePressed: () => deletePost(post.id),
-                  ),
-                );
+            return RefreshIndicator(
+              color: accentColor,
+              backgroundColor: surfaceColor,
+              onRefresh: () async {
+                await Future.wait([
+                  Future(() => fetchAllPosts()),
+                  Future(() => fetchFollowing()),
+                ]);
               },
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: filteredPosts.length,
+                itemBuilder: (context, index) {
+                  //get individual posts
+                  final post = filteredPosts[index];
+
+                  return Container(
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: PostTile(
+                      post: post,
+                      onDeletePressed: () => deletePost(post.id),
+                    ),
+                  );
+                },
+              ),
             );
           }
           //error
@@ -333,8 +371,8 @@ class _HomePageState extends State<HomePage> {
               label: 'Post',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.message_rounded),
-              label: 'Messages',
+              icon: Icon(Icons.cloud),
+              label: 'Twitter',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),

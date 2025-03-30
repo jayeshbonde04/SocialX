@@ -1,10 +1,21 @@
 # This file controls Flutter-level build steps. It should not be edited.
 cmake_minimum_required(VERSION 3.14)
 
+# Define standard settings function
+function(apply_standard_settings TARGET)
+  target_compile_features(${TARGET} PUBLIC cxx_std_17)
+  target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
+  target_compile_options(${TARGET} PRIVATE /EHsc)
+  target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=1")
+  target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
+endfunction()
+
 set(EPHEMERAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ephemeral")
 
 # Configuration provided via flutter tool.
-include(${EPHEMERAL_DIR}/generated_config.cmake)
+if(EXISTS "${EPHEMERAL_DIR}/generated_config.cmake")
+  include("${EPHEMERAL_DIR}/generated_config.cmake")
+endif()
 
 # TODO: Move the rest of this into files in ephemeral. See
 # https://github.com/flutter/flutter/issues/57146.

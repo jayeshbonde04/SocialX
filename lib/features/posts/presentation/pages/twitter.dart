@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
-import '../../../../services/database/database_provider.dart';
-import '../components/my_input_alertBox.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:socialx/features/posts/domain/entities/post.dart';
+import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
+import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
+import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
+import 'package:socialx/features/profile/presentation/cubits/profile_states.dart';
+import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
+import 'package:socialx/features/posts/presentation/components/my_input_alertBox.dart';
+import 'package:socialx/features/posts/presentation/components/post_tile.dart';
 
-
-class Twitter extends StatefulWidget {
-  const Twitter({super.key});
+class TwitterPage extends StatefulWidget {
+  const TwitterPage({super.key});
 
   @override
-  State<Twitter> createState() => _TwitterState();
+  State<TwitterPage> createState() => _TwitterPageState();
 }
 
-class _TwitterState extends State<Twitter> {
-  // Text controller
+class _TwitterPageState extends State<TwitterPage> {
   final TextEditingController _messageController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<PostCubit>().fetchAllPosts();
+  }
 
   @override
   void dispose() {
@@ -22,82 +32,133 @@ class _TwitterState extends State<Twitter> {
     super.dispose();
   }
 
-  // Show Message Dialog Box
-  void _openPostMessageBox() {
-    showDialog(
+  void deletePost(String postId) {
+    context.read<PostCubit>().deletePost(postId);
+    context.read<PostCubit>().fetchAllPosts();
+  }
+
+  void _postTweet() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      return;
+    }
+
+    final userProfile = await context.read<ProfileCubit>().getUserProfile(currentUser.uid);
+    if (userProfile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User profile not found')),
+      );
+      return;
+    }
+
+    final result = await showDialog<String>(
       context: context,
       builder: (context) => MyInputAlertBox(
         textController: _messageController,
-        hintText: "Want To Share Something?",
-        onPressed: () async {
-          if (_messageController.text.trim().isEmpty) {
-            return; // Prevent empty posts
-          }
-
-          // Close the dialog before performing the operation
-          Navigator.pop(context);
-
-          // Get provider instance
-          final databaseProvider = Provider.of<DatabaseProvider>(context, listen: false);
-
-          // Post in database
-          await postMessage(databaseProvider, _messageController.text);
-
-          // Clear the text field after posting
-          _messageController.clear();
+        hintText: 'What\'s happening?',
+        maxLength: 280,
+        onPressed: () {
+          final text = _messageController.text;
+          Navigator.pop(context, text);
         },
-        onPressedText: "Post",
+        onPressedText: 'Tweet',
       ),
     );
-  }
 
-
-
-// User wants to post message
-  Future<void> postMessage(DatabaseProvider databaseProvider, String message) async {
-    try {
-      // Get the authenticated user's ID dynamically
-      final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-      if (userId.isEmpty) {
-        print("Error: User is not authenticated.");
-        return;
-      }
-
-      // Fetch user data from the database
-      final user = await databaseProvider.getCurrentUser(userId);
-
-      if (user == null) {
-        print("Error: User data not found.");
-        return;
-      }
-
-      // Post the message with fetched user data
-      await databaseProvider.postMessageInFirebase(
-        uid: user['uid'],
-        name: user['name'],
-        username: user['username'],
-        message: message,
-        imageUrl: user['imageUrl'] ?? '',
+    if (result != null && result.isNotEmpty) {
+      final post = Post(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: currentUser.uid,
+        userName: userProfile.name,
+        text: result,
+        imageUrl: '', // Explicitly set empty string for no image
+        timestamp: DateTime.now(),
+        likes: [],
+        comment: [],
+        type: PostType.tweet,
       );
 
-      print("Post uploaded successfully");
-    } catch (e) {
-      print("Error posting message: $e");
+      if (mounted) {
+        context.read<PostCubit>().createPost(post);
+        _messageController.clear(); // Clear the input after posting
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('${userProfile.name} tweeted: ${result.substring(0, result.length > 30 ? 30 : result.length)}${result.length > 30 ? '...' : ''}'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Twitter Feeds'),
+        title: const Text('Twitter'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _postTweet,
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openPostMessageBox,
-        child: const Icon(Icons.add),
+      body: BlocBuilder<PostCubit, PostState>(
+        builder: (context, state) {
+          if (state is PostsLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is PostsError) {
+            return Center(child: Text('Error: ${state.message}'));
+          }
+
+          if (state is PostsLoaded) {
+            // Filter only tweets and sort by timestamp (newest first)
+            final tweets = state.posts
+                .where((post) => post.type == PostType.tweet)
+                .toList()
+              ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+            
+            if (tweets.isEmpty) {
+              return const Center(
+                child: Text('No tweets yet. Be the first to tweet!'),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                await context.read<PostCubit>().fetchAllPosts();
+              },
+              child: ListView.builder(
+                itemCount: tweets.length,
+                itemBuilder: (context, index) {
+                  final tweet = tweets[index];
+                  return PostTile(
+                    post: tweet,
+                    onDeletePressed: () => deletePost(tweet.id),
+                  );
+                },
+              ),
+            );
+          }
+
+          return const Center(child: Text('No posts available'));
+        },
       ),
     );
   }
 }
+

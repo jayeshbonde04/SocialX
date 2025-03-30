@@ -74,11 +74,78 @@ class DatabaseProvider extends ChangeNotifier {
           .get();
 
       _allPosts.clear();
-      //_allPosts.addAll(snapshot.docs.map((doc) => Post.fromFirestore(doc)).toList());
+      _allPosts.addAll(snapshot.docs.map((doc) => Post.fromFirestore(doc)).toList());
       notifyListeners();
       print("Posts fetched successfully! Total: ${_allPosts.length}");
     } catch (error) {
       print("Error fetching posts: $error");
+    }
+  }
+
+  // Method to toggle like on a post
+  Future<void> toggleLike(String postId, String username) async {
+    try {
+      final postRef = _firestore.collection('Posts').doc(postId);
+      final postDoc = await postRef.get();
+      
+      if (!postDoc.exists) {
+        print("Error: Post not found");
+        return;
+      }
+
+      final data = postDoc.data()!;
+      final likes = data['likes'] ?? 0;
+      final likedBy = List<String>.from(data['likedBy'] ?? []);
+
+      if (likedBy.contains(username)) {
+        // Unlike the post
+        await postRef.update({
+          'likes': likes - 1,
+          'likedBy': FieldValue.arrayRemove([username]),
+        });
+      } else {
+        // Like the post
+        await postRef.update({
+          'likes': likes + 1,
+          'likedBy': FieldValue.arrayUnion([username]),
+        });
+      }
+
+      // Refresh posts after updating
+      await fetchAllPosts();
+    } catch (error) {
+      print("Error toggling like: $error");
+    }
+  }
+
+  // Method to delete a post
+  Future<void> deletePost(String postId) async {
+    try {
+      final postRef = _firestore.collection('Posts').doc(postId);
+      final postDoc = await postRef.get();
+      
+      if (!postDoc.exists) {
+        print("Error: Post not found");
+        return;
+      }
+
+      // Check if the current user is the owner of the post
+      final data = postDoc.data()!;
+      final postOwnerId = data['uid'];
+      final currentUserId = _auth.currentUser?.uid;
+
+      if (postOwnerId != currentUserId) {
+        print("Error: You can only delete your own posts");
+        return;
+      }
+
+      await postRef.delete();
+      print("Post deleted successfully!");
+      
+      // Refresh posts after deleting
+      await fetchAllPosts();
+    } catch (error) {
+      print("Error deleting post: $error");
     }
   }
 }

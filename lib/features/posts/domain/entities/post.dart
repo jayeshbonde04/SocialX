@@ -1,6 +1,8 @@
 import 'package:socialx/features/posts/domain/entities/comment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum PostType { tweet, regular }
+
 class Post {
   final String id;
   late final String userId;
@@ -10,6 +12,7 @@ class Post {
   final DateTime timestamp;
   final List<String> likes;
   final List<Comment> comment;
+  final PostType type;
 
   Post({
     required this.id,
@@ -20,6 +23,7 @@ class Post {
     required this.timestamp,
     required this.likes,
     required this.comment,
+    this.type = PostType.regular,
   });
 
   Post copyWith({String? imageUrl}) {
@@ -31,7 +35,8 @@ class Post {
         imageUrl: imageUrl ?? this.imageUrl,
         timestamp: timestamp,
         likes: likes,
-        comment: comment);
+        comment: comment,
+        type: type);
   }
 
   // convert post -> Json
@@ -45,6 +50,7 @@ class Post {
       'timestamp': timestamp,
       'likes': likes,
       'comment': comment.map((comment) => comment.toJson()).toList(),
+      'type': type.toString(),
     };
   }
 
@@ -66,6 +72,7 @@ class Post {
             ? (json['timestamp'] as Timestamp).toDate()
             : DateTime.now(),
         likes: List<String>.from(json['likes'] ?? []),
-        comment: comments);
+        comment: comments,
+        type: json['type'] == 'PostType.tweet' ? PostType.tweet : PostType.regular);
   }
 }

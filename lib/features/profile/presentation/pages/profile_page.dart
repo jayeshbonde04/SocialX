@@ -12,7 +12,6 @@ import 'package:socialx/features/profile/presentation/components/bio_box.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_states.dart';
 import 'package:socialx/features/profile/presentation/pages/edit_profile_page.dart';
-import 'package:socialx/features/profile/presentation/pages/followers_following_page.dart';
 import 'package:socialx/themes/app_colors.dart';
 
 // Text styles

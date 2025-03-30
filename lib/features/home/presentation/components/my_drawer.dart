@@ -65,7 +65,7 @@ class MyDrawer extends StatelessWidget {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context)=> const Twitter())
+                        builder: (context)=> const TwitterPage())
                     );
                   }),
 

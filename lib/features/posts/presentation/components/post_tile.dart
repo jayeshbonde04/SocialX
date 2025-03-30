@@ -45,6 +45,7 @@ class _PostTileState extends State<PostTile> {
   late final profileCubit = context.read<ProfileCubit>();
 
   bool isOwnPost = false;
+  bool isFollowing = false;
 
   //current user
   AppUsers? currentUser;
@@ -72,7 +73,28 @@ class _PostTileState extends State<PostTile> {
     if (fetchUser != null) {
       setState(() {
         postUser = fetchUser;
+        isFollowing = fetchUser.followers.contains(currentUser!.uid);
       });
+    }
+  }
+
+  void toggleFollow() async {
+    if (currentUser == null || postUser == null) return;
+    
+    setState(() {
+      isFollowing = !isFollowing;
+    });
+
+    try {
+      await profileCubit.toggleFollow(postUser!.uid, currentUser!.uid);
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        isFollowing = !isFollowing;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to ${isFollowing ? 'follow' : 'unfollow'}: $e')),
+      );
     }
   }
 
@@ -281,6 +303,30 @@ class _PostTileState extends State<PostTile> {
                   ),
 
                   const Spacer(),
+
+                  // Follow/Unfollow button
+                  if (!isOwnPost)
+                    TextButton(
+                      onPressed: toggleFollow,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        backgroundColor: isFollowing ? accentColor.withOpacity(0.1) : Colors.transparent,
+                        side: BorderSide(
+                          color: isFollowing ? accentColor : textSecondary,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        isFollowing ? 'Following' : 'Follow',
+                        style: TextStyle(
+                          color: isFollowing ? accentColor : textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(width: 8),
 
                   // Delete button
                   if (isOwnPost)
