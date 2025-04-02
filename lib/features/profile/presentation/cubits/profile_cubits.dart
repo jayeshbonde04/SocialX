@@ -4,13 +4,18 @@ import 'package:socialx/features/profile/domain/entities/profile_user.dart';
 import 'package:socialx/features/profile/domain/repos/profile_user.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_states.dart';
 import 'package:socialx/storage/domain/storage_repo.dart';
+import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 
 class ProfileCubit extends Cubit<ProfileStates> {
   final ProfileRepo profileRepo;
   final StorageRepo storageRepo;
+  final AuthCubit authCubit;
 
-  ProfileCubit({required this.storageRepo, required this.profileRepo})
-      : super(ProfileInitial());
+  ProfileCubit({
+    required this.storageRepo,
+    required this.profileRepo,
+    required this.authCubit,
+  }) : super(ProfileInitial());
 
   //fetch user profile using repo -> useful for loading single profile pages
   Future<void> fetchUserProfile(String uid) async {
@@ -42,6 +47,7 @@ class ProfileCubit extends Cubit<ProfileStates> {
     String? imageMobilePath,
     String? newName,
     String? newEmail,
+    String? currentPassword,
   }) async {
     emit(ProfileLoading());
 
@@ -78,6 +84,22 @@ class ProfileCubit extends Cubit<ProfileStates> {
         }
       }
 
+      // Update email if changed
+      if (newEmail != null && newEmail != currentUser.email) {
+        try {
+          if (currentPassword == null) {
+            emit(ProfileErrors("Current password is required to update email"));
+            return;
+          }
+          await authCubit.updateEmail(newEmail, currentPassword);
+          // Wait for a short moment to ensure Firebase Auth update is complete
+          await Future.delayed(const Duration(milliseconds: 500));
+        } catch (e) {
+          emit(ProfileErrors("Failed to update email: $e"));
+          return;
+        }
+      }
+
       //update new profile
       final updateProfile = currentUser.copyWith(
         newBio: newBio ?? currentUser.bio,
@@ -90,9 +112,14 @@ class ProfileCubit extends Cubit<ProfileStates> {
       await profileRepo.updateProfile(updateProfile);
 
       //refetch the update profile
-      await fetchUserProfile(uid);
+      final updatedUser = await profileRepo.fetchUserProfile(uid);
+      if (updatedUser != null) {
+        emit(ProfileLoaded(updatedUser));
+      } else {
+        emit(ProfileErrors("Failed to fetch updated profile"));
+      }
     } catch (e) {
-      emit(ProfileErrors('Error fetching user profile'));
+      emit(ProfileErrors('Error updating profile: $e'));
     }
   }
 

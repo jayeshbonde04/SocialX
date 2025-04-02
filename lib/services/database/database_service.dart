@@ -16,6 +16,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:socialx/models/message.dart';
 import 'package:socialx/models/user.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class DatabaseService {
   // get the instance of firestore db & auth
@@ -201,8 +209,27 @@ MESSAGING FEATURE
     });
   }
 
+  // Upload media file
+  Future<String?> uploadMediaFile(String filePath, String fileName) async {
+    try {
+      final ref = FirebaseStorage.instance.ref().child('chat_media/$fileName');
+      final uploadTask = ref.putFile(File(filePath));
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      print("Error uploading media file: $e");
+      return null;
+    }
+  }
+
   //SEND MESSAGES
-  Future<void> sendMessage(String receiverID, message) async {
+  Future<void> sendMessage(
+    String receiverID,
+    String message, {
+    MessageType type = MessageType.text,
+    String? mediaUrl,
+    int? audioDuration,
+  }) async {
     try {
       // Get current user info
       final String currentUserId = _auth.currentUser!.uid;
@@ -211,11 +238,15 @@ MESSAGING FEATURE
 
       // Create a new message
       Message newMessage = Message(
-          senderID: currentUserEmail,
-          senderEmail: currentUserId,
-          receiverID: receiverID,
-          message: message,
-          timestamp: timestamp);
+        senderID: currentUserEmail,
+        senderEmail: currentUserId,
+        receiverID: receiverID,
+        message: message,
+        timestamp: timestamp,
+        type: type,
+        mediaUrl: mediaUrl,
+        audioDuration: audioDuration,
+      );
 
       // Construct chat room ID for the two users (sorted to ensure uniqueness)
       List<String> ids = [currentUserId, receiverID];
@@ -256,5 +287,137 @@ MESSAGING FEATURE
         .collection("messages")
         .orderBy("timestamp", descending: false)
         .snapshots();
+  }
+
+  // Update Message
+  Future<void> updateMessage(String messageId, String newText) async {
+    try {
+      // Get the current user's ID
+      final String currentUserId = _auth.currentUser!.uid;
+
+      // Get all chat rooms where the current user is a participant
+      final chatRoomsSnapshot = await _db
+          .collection('chat_rooms')
+          .where('participants', arrayContains: currentUserId)
+          .get();
+
+      // Search through each chat room for the message
+      for (var chatRoom in chatRoomsSnapshot.docs) {
+        final messageDoc = await chatRoom.reference
+            .collection('messages')
+            .doc(messageId)
+            .get();
+
+        if (messageDoc.exists) {
+          await messageDoc.reference.update({
+            'message': newText,
+            'isEdited': true,
+            'editedAt': FieldValue.serverTimestamp(),
+          });
+          return; // Exit after finding and updating the message
+        }
+      }
+    } catch (e) {
+      print('Error updating message: $e');
+      rethrow;
+    }
+  }
+
+  // Delete Message
+  Future<void> deleteMessage(String messageId) async {
+    try {
+      // Get the current user's ID
+      final String currentUserId = _auth.currentUser!.uid;
+
+      // Get all chat rooms where the current user is a participant
+      final chatRoomsSnapshot = await _db
+          .collection('chat_rooms')
+          .where('participants', arrayContains: currentUserId)
+          .get();
+
+      // Search through each chat room for the message
+      for (var chatRoom in chatRoomsSnapshot.docs) {
+        final messageDoc = await chatRoom.reference
+            .collection('messages')
+            .doc(messageId)
+            .get();
+
+        if (messageDoc.exists) {
+          await messageDoc.reference.delete();
+          return; // Exit after finding and deleting the message
+        }
+      }
+    } catch (e) {
+      print('Error deleting message: $e');
+      rethrow;
+    }
+  }
+
+  // Delete user account and all associated data
+  Future<void> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final String userId = user.uid;
+
+        // 1. Delete user's posts
+        final postsSnapshot =
+            await _db.collection('posts').where('uid', isEqualTo: userId).get();
+        for (var doc in postsSnapshot.docs) {
+          await doc.reference.delete();
+        }
+
+        // 2. Delete user's profile data
+        await _db.collection('users').doc(userId).delete();
+
+        // 3. Delete user's chat rooms and messages
+        final chatRoomsSnapshot = await _db
+            .collection('chat_rooms')
+            .where('participants', arrayContains: userId)
+            .get();
+
+        for (var chatRoom in chatRoomsSnapshot.docs) {
+          // Delete all messages in the chat room
+          final messagesSnapshot =
+              await chatRoom.reference.collection('messages').get();
+          for (var message in messagesSnapshot.docs) {
+            await message.reference.delete();
+          }
+          // Delete the chat room itself
+          await chatRoom.reference.delete();
+        }
+
+        // 4. Remove user from other users' followers/following lists
+        final allUsersSnapshot = await _db.collection('users').get();
+        for (var userDoc in allUsersSnapshot.docs) {
+          if (userDoc.id != userId) {
+            await userDoc.reference.update({
+              'followers': FieldValue.arrayRemove([userId]),
+              'following': FieldValue.arrayRemove([userId]),
+            });
+          }
+        }
+
+        // 5. Delete user's profile image from storage if exists
+        try {
+          final userDoc = await _db.collection('users').doc(userId).get();
+          if (userDoc.exists) {
+            final profileImageUrl = userDoc.data()?['profileImageUrl'];
+            if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+              final ref = FirebaseStorage.instance.refFromURL(profileImageUrl);
+              await ref.delete();
+            }
+          }
+        } catch (e) {
+          print('Error deleting profile image: $e');
+        }
+
+        // 6. Finally, delete the user's authentication account
+        await user.delete();
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+      rethrow;
+    }
   }
 }

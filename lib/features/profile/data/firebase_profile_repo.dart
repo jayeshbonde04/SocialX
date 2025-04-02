@@ -44,15 +44,19 @@ class FirebaseProfileRepo implements ProfileRepo {
   Future<void> updateProfile(ProfileUser updateProfile) async {
     try {
       //convert updated profile to json to store in firestore
-      await firebaseFirestore
-          .collection('users')
-          .doc(updateProfile.uid)
-          .update({
+      final Map<String, dynamic> updateData = {
         'bio': updateProfile.bio,
         'profileImageUrl': updateProfile.profileImageUrl,
         'followers': updateProfile.followers,
         'following': updateProfile.following,
-      });
+        'name': updateProfile.name,
+        'email': updateProfile.email, // Always include email in the update
+      };
+
+      await firebaseFirestore
+          .collection('users')
+          .doc(updateProfile.uid)
+          .update(updateData);
     } catch (e) {
       print("Error updating profile: $e");
       throw Exception(e);

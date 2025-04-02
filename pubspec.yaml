@@ -34,6 +34,22 @@ dependencies:
 
   # Utilities
   timeago: ^3.6.1
+  share_plus: ^7.2.1
+
+  # Image picker
+  image_picker: ^1.0.7
+
+  # Audio recording
+  record: ^5.0.4
+
+  # Audio playback
+  audioplayers: ^5.2.1
+
+  # Path provider
+  path_provider: ^2.1.2
+
+  # HTTP
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

@@ -4,12 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
 import 'package:socialx/features/auth/presentation/components/my_textfield.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
+import 'package:image_picker/image_picker.dart';
 
 // Dark mode color scheme
 const Color primaryColor = Color(0xFF1A1A1A);
@@ -21,6 +23,25 @@ const Color textPrimary = Color(0xFFFFFFFF);
 const Color textSecondary = Color(0xFFB3B3B3);
 const Color dividerColor = Color(0xFF2D2D2D);
 const Color errorColor = Color(0xFFFF4B4B);
+
+// Text styles
+final TextStyle titleStyle = GoogleFonts.poppins(
+  color: textPrimary,
+  fontWeight: FontWeight.bold,
+  fontSize: 24,
+  letterSpacing: 0.5,
+);
+
+final TextStyle subtitleStyle = GoogleFonts.poppins(
+  color: textSecondary,
+  fontSize: 16,
+  fontWeight: FontWeight.w500,
+);
+
+final TextStyle bodyStyle = GoogleFonts.poppins(
+  color: textSecondary,
+  fontSize: 14,
+);
 
 class UploadPostPage extends StatefulWidget {
   const UploadPostPage({super.key});
@@ -50,19 +71,146 @@ class _UploadPostPageState extends State<UploadPostPage> {
 
   //select image
   Future<void> pickImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      withData: kIsWeb,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: accentColor),
+              title: const Text(
+                'Choose from Gallery',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickImageFromSource(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: accentColor),
+              title: const Text(
+                'Take a Photo',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await _pickImageFromSource(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
     );
+  }
 
-    if (result != null) {
-      setState(() {
-        imagePickedFile = result.files.first;
-        if (kIsWeb) {
-          webImage = imagePickedFile?.bytes;
+  Future<void> _pickImageFromSource(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        // Show image preview and editing options
+        if (context.mounted) {
+          final editedImage = await _showImagePreviewAndEdit(image.path);
+          if (editedImage != null) {
+            Uint8List? imageBytes;
+            if (kIsWeb) {
+              imageBytes = await editedImage.readAsBytes();
+            }
+            setState(() {
+              imagePickedFile = PlatformFile(
+                name: editedImage.name,
+                path: editedImage.path,
+                size: 0,
+              );
+              if (kIsWeb) {
+                webImage = imageBytes;
+              }
+            });
+          }
         }
-      });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
     }
+  }
+
+  Future<XFile?> _showImagePreviewAndEdit(String imagePath) async {
+    return showDialog<XFile>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: surfaceColor,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 300,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.file(
+                  File(imagePath),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    label: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(context, XFile(imagePath));
+                    },
+                    icon: const Icon(Icons.check, color: accentColor),
+                    label: const Text(
+                      'Use Photo',
+                      style: TextStyle(color: accentColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   //compress image
@@ -134,7 +282,9 @@ class _UploadPostPageState extends State<UploadPostPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    state is PostsUploading ? 'Uploading post...' : 'Loading...',
+                    state is PostsUploading
+                        ? 'Uploading post...'
+                        : 'Loading...',
                     style: const TextStyle(
                       color: textPrimary,
                       fontSize: 16,
@@ -271,7 +421,21 @@ class _UploadPostPageState extends State<UploadPostPage> {
                   hintText: 'Write a caption...',
                   obscuretext: false,
                   maxLines: 5,
-                  style: const TextStyle(color: textPrimary),
+                  style: bodyStyle.copyWith(color: textPrimary),
+                  cursorColor: textPrimary,
+                  decoration: InputDecoration(
+                    hintStyle: bodyStyle.copyWith(
+                      color: textSecondary.withOpacity(0.5),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
               ),
             ],

@@ -195,12 +195,19 @@ class _DisplayUserState extends State<DisplayUser> {
           contentPadding: const EdgeInsets.all(12),
           leading: CircleAvatar(
             radius: 24,
+            backgroundImage: userData['profileImageUrl'] != null &&
+                    userData['profileImageUrl'].isNotEmpty
+                ? NetworkImage(userData['profileImageUrl'])
+                : null,
             backgroundColor: accentColor.withOpacity(0.1),
-            child: const Icon(
-              Icons.person_rounded,
-              color: accentColor,
-              size: 24,
-            ),
+            child: userData['profileImageUrl'] == null ||
+                    userData['profileImageUrl'].isEmpty
+                ? const Icon(
+                    Icons.person_rounded,
+                    color: accentColor,
+                    size: 24,
+                  )
+                : null,
           ),
           title: Text(
             userData['name'] ?? '',

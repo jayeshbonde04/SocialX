@@ -34,7 +34,7 @@ final TextStyle bodyStyle = GoogleFonts.poppins(
 );
 
 final TextStyle buttonStyle = GoogleFonts.poppins(
-  color: AppColors.accent,
+  color: AppColors.buttonPrimary,
   fontSize: 12,
   fontWeight: FontWeight.w600,
 );
@@ -58,6 +58,9 @@ class _ProfilePageState extends State<ProfilePage> {
   //posts
   int postCount = 0;
 
+  //toggle state
+  bool showPhotos = true;
+
   //on startup
   @override
   void initState() {
@@ -73,6 +76,13 @@ class _ProfilePageState extends State<ProfilePage> {
   //get current user
   void getCurrentUser() {
     currentUser = authCubit.currentuser;
+  }
+
+  //toggle between photos and tweets
+  void toggleContent() {
+    setState(() {
+      showPhotos = !showPhotos;
+    });
   }
 
   @override
@@ -95,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       color: AppColors.accentWithOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.person_rounded,
                       color: AppColors.accent,
                       size: 28,
@@ -118,7 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         builder: (context) => EditProfilePage(user: user),
                       ),
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.settings_rounded,
                       color: AppColors.textSecondary,
                     ),
@@ -134,18 +144,18 @@ class _ProfilePageState extends State<ProfilePage> {
                   Center(
                     child: CachedNetworkImage(
                       imageUrl: user.profileImageUrl,
-                      placeholder: (context, url) => const CircularProgressIndicator(
+                      placeholder: (context, url) => CircularProgressIndicator(
                         color: AppColors.accent,
                         strokeWidth: 3,
                       ),
                       errorWidget: (context, url, error) => Container(
                         height: 120,
                         width: 120,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.surface,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.person_rounded,
                           size: 72,
                           color: AppColors.textSecondary,
@@ -162,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: AppColors.shadow,
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -186,7 +196,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 final userPost = state.posts
                                     .where((post) => post.userId == widget.uid)
                                     .toList();
-                                return _buildStatValue(userPost.length.toString());
+                                return _buildStatValue(
+                                    userPost.length.toString());
                               }
                               return _buildStatValue('0');
                             },
@@ -215,12 +226,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              profileCubit.toggleFollow(user.uid, currentUser!.uid);
+                              profileCubit.toggleFollow(
+                                  user.uid, currentUser!.uid);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: user.followers.contains(currentUser!.uid)
-                                  ? AppColors.secondary
-                                  : AppColors.accent,
+                              backgroundColor:
+                                  user.followers.contains(currentUser!.uid)
+                                      ? AppColors.secondary
+                                      : AppColors.accent,
                               foregroundColor: AppColors.textPrimary,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
@@ -275,53 +288,218 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  // Posts Grid
-                  BlocBuilder<PostCubit, PostState>(
-                    builder: (context, state) {
-                      if (state is PostsLoaded) {
-                        final userPosts = state.posts
-                            .where((post) => post.userId == widget.uid)
-                            .toList();
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: userPosts.length,
-                          itemBuilder: (context, index) {
-                            final post = userPosts[index];
-                            return Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
+                  // Toggle Bar
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 25),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => showPhotos = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
+                                color: showPhotos
+                                    ? AppColors.accent
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  bottomLeft: Radius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.photo_library_rounded,
+                                    color: showPhotos
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Photos',
+                                    style: buttonStyle.copyWith(
+                                      color: showPhotos
+                                          ? AppColors.textPrimary
+                                          : AppColors.textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: PostTile(
-                                post: post,
-                                onDeletePressed: () {},
-                              ),
-                            );
-                          },
-                        );
-                      }
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.accent,
-                          strokeWidth: 3,
+                            ),
+                          ),
                         ),
-                      );
-                    },
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => showPhotos = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !showPhotos
+                                    ? AppColors.accent
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(12),
+                                  bottomRight: Radius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.chat_bubble_outline_rounded,
+                                    color: !showPhotos
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Tweets',
+                                    style: buttonStyle.copyWith(
+                                      color: !showPhotos
+                                          ? AppColors.textPrimary
+                                          : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 20),
+                  // Content Section
+                  if (showPhotos)
+                    // Photos Grid
+                    BlocBuilder<PostCubit, PostState>(
+                      builder: (context, state) {
+                        if (state is PostsLoaded) {
+                          final userPosts = state.posts
+                              .where((post) =>
+                                  post.userId == widget.uid &&
+                                  post.imageUrl.isNotEmpty)
+                              .toList();
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: userPosts.length,
+                            itemBuilder: (context, index) {
+                              final post = userPosts[index];
+                              return PostTile(
+                                post: post,
+                                onDeletePressed: () {
+                                  // Handle post deletion if needed
+                                },
+                              );
+                            },
+                          );
+                        }
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.accent,
+                            strokeWidth: 3,
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    // Twitter Posts (text-only)
+                    BlocBuilder<PostCubit, PostState>(
+                      builder: (context, state) {
+                        if (state is PostsLoaded) {
+                          final userPosts = state.posts
+                              .where((post) =>
+                                  post.userId == widget.uid &&
+                                  post.imageUrl.isEmpty)
+                              .toList();
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: userPosts.length,
+                            itemBuilder: (context, index) {
+                              final post = userPosts[index];
+                              return PostTile(
+                                post: post,
+                                onDeletePressed: () {
+                                  // Handle post deletion if needed
+                                },
+                              );
+                            },
+                          );
+                        }
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.accent,
+                            strokeWidth: 3,
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
+            ),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: 4,
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: AppColors.surface,
+              selectedItemColor: AppColors.accent,
+              unselectedItemColor: AppColors.textSecondary,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.search_rounded),
+                  label: 'Search',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.add_box_rounded),
+                  label: 'Post',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.cloud),
+                  label: 'Twitter',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+              onTap: (index) {
+                if (index != 4) {
+                  Navigator.pop(context);
+                  switch (index) {
+                    case 0:
+                      break;
+                    case 1:
+                      Navigator.pushNamed(context, '/search');
+                      break;
+                    case 2:
+                      Navigator.pushNamed(context, '/post');
+                      break;
+                    case 3:
+                      Navigator.pushNamed(context, '/twitter');
+                      break;
+                  }
+                }
+              },
             ),
           );
         }

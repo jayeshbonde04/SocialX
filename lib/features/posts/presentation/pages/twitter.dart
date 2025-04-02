@@ -5,8 +5,6 @@ import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
-import 'package:socialx/features/profile/presentation/cubits/profile_states.dart';
-import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
 import 'package:socialx/features/posts/presentation/components/my_input_alertBox.dart';
 import 'package:socialx/features/posts/presentation/components/post_tile.dart';
 

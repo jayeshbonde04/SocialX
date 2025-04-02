@@ -29,15 +29,13 @@ final TextStyle buttonStyle = GoogleFonts.poppins(
 
 ThemeData lightMode = ThemeData(
   useMaterial3: true,
-  colorScheme: ColorScheme.dark(
+  colorScheme: const ColorScheme.dark(
     primary: AppColors.primary,
     secondary: AppColors.secondary,
     tertiary: AppColors.accent,
-    background: AppColors.background,
     surface: AppColors.surface,
     onPrimary: AppColors.textPrimary,
     onSecondary: AppColors.textSecondary,
-    onBackground: AppColors.textPrimary,
     onSurface: AppColors.textPrimary,
     error: AppColors.error,
   ),

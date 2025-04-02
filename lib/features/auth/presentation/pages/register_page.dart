@@ -53,50 +53,54 @@ class _RegisterPageState extends State<RegisterPage> {
   //confirm-password controller
   final conPasswordController = TextEditingController();
 
-void register() {
-  // Get input values
-  final String name = nameController.text.trim();
-  final String email = emailController.text.trim();
-  final String password = passwordController.text;
-  final String conpass = conPasswordController.text;
+  void register() {
+    // Get input values
+    final String name = nameController.text.trim();
+    final String email = emailController.text.trim();
+    final String password = passwordController.text;
+    final String conpass = conPasswordController.text;
 
-  // Auth cubit
-  final authCubit = context.read<AuthCubit>();
+    // Auth cubit
+    final authCubit = context.read<AuthCubit>();
 
-  // Validate email format
-  final emailRegex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
-  if (!emailRegex.hasMatch(email)) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    // Validate email format
+    final emailRegex =
+        RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Invalid email format!"),
           backgroundColor: errorColor,
         ),
-    );
-    return;
-  }
+      );
+      return;
+    }
 
-  // Ensure fields are not empty
-  if (name.isNotEmpty && email.isNotEmpty && password.isNotEmpty && conpass.isNotEmpty) {
-    // Ensure passwords match
-    if (password == conpass) {
-      authCubit.register(name, email, password);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+    // Ensure fields are not empty
+    if (name.isNotEmpty &&
+        email.isNotEmpty &&
+        password.isNotEmpty &&
+        conpass.isNotEmpty) {
+      // Ensure passwords match
+      if (password == conpass) {
+        authCubit.register(name, email, password);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Passwords do not match!"),
             backgroundColor: errorColor,
           ),
-      );
-    }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Fill all the fields"),
           backgroundColor: errorColor,
         ),
-    );
+      );
+    }
   }
-}
 
   @override
   void dispose() {
@@ -106,18 +110,18 @@ void register() {
     conPasswordController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-        child: Padding(
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+              children: [
                 const SizedBox(height: 48),
                 // Logo
                 Container(
@@ -126,7 +130,7 @@ void register() {
                     color: accentColor.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.person_add_rounded,
                     size: 64,
                     color: accentColor,
@@ -166,8 +170,10 @@ void register() {
                     hintText: "Full Name",
                     obscuretext: false,
                     style: bodyStyle.copyWith(color: textPrimary),
+                    cursorColor: textPrimary,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.person_outline, color: textSecondary),
+                      prefixIcon: const Icon(Icons.person_outline,
+                          color: textSecondary),
                       hintStyle: bodyStyle.copyWith(
                         color: textSecondary.withOpacity(0.5),
                       ),
@@ -198,12 +204,14 @@ void register() {
                     ],
                   ),
                   child: MyTextfield(
-                    controller: emailController, 
+                    controller: emailController,
                     hintText: "Email",
                     obscuretext: false,
                     style: bodyStyle.copyWith(color: textPrimary),
+                    cursorColor: textPrimary,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.email_outlined, color: textSecondary),
+                      prefixIcon: const Icon(Icons.email_outlined,
+                          color: textSecondary),
                       hintStyle: bodyStyle.copyWith(
                         color: textSecondary.withOpacity(0.5),
                       ),
@@ -234,12 +242,14 @@ void register() {
                     ],
                   ),
                   child: MyTextfield(
-                    controller: passwordController, 
+                    controller: passwordController,
                     hintText: "Password",
                     obscuretext: true,
                     style: bodyStyle.copyWith(color: textPrimary),
+                    cursorColor: textPrimary,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_outline, color: textSecondary),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: textSecondary),
                       hintStyle: bodyStyle.copyWith(
                         color: textSecondary.withOpacity(0.5),
                       ),
@@ -270,12 +280,14 @@ void register() {
                     ],
                   ),
                   child: MyTextfield(
-                    controller: conPasswordController, 
+                    controller: conPasswordController,
                     hintText: "Confirm Password",
                     obscuretext: true,
                     style: bodyStyle.copyWith(color: textPrimary),
+                    cursorColor: textPrimary,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_outline, color: textSecondary),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: textSecondary),
                       hintStyle: bodyStyle.copyWith(
                         color: textSecondary.withOpacity(0.5),
                       ),
@@ -326,16 +338,16 @@ void register() {
                 const SizedBox(height: 24),
 
                 // Login Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
                       "Already have an account?",
                       style: bodyStyle,
-                        ),
+                    ),
                     TextButton(
                       onPressed: widget.togglePages,
-                        child: Text(
+                      child: Text(
                         " Sign In",
                         style: bodyStyle.copyWith(
                           color: accentColor,
@@ -349,7 +361,7 @@ void register() {
             ),
           ),
         ),
-        ),
-    ); 
+      ),
+    );
   }
 }

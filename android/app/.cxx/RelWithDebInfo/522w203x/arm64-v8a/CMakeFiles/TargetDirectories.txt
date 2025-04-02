@@ -1,0 +1,2 @@
+C:/SocialX-1/android/app/.cxx/RelWithDebInfo/522w203x/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/SocialX-1/android/app/.cxx/RelWithDebInfo/522w203x/arm64-v8a/CMakeFiles/rebuild_cache.dir

@@ -6,17 +6,21 @@ import 'package:socialx/features/auth/domain/entities/app_users.dart';
 
 abstract class AuthState {}
 
-//initial 
-class AuthInitial extends AuthState{}
+//initial
+class AuthInitial extends AuthState {}
 
 //loading...
-class AuthLoading extends AuthState{}
+class AuthLoading extends AuthState {}
 
-class AuthSuccess extends AuthState {}
+class AuthSuccess extends AuthState {
+  final String message;
+  AuthSuccess(this.message);
+}
 
 //Authenticated
-class Authenticated extends AuthState{
-  Authenticated(AppUsers user);
+class Authenticated extends AuthState {
+  final AppUsers user;
+  Authenticated(this.user);
 }
 
 class AuthFailure extends AuthState {
@@ -24,11 +28,10 @@ class AuthFailure extends AuthState {
   AuthFailure(this.error);
 }
 
-//Unauthenticated
-class Unauthenticated extends AuthState{}
-
-//errors
-class AuthErrors extends AuthState{
+class AuthErrors extends AuthState {
   final String message;
   AuthErrors(this.message);
 }
+
+//Unauthenticated
+class Unauthenticated extends AuthState {}

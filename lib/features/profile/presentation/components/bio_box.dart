@@ -33,7 +33,7 @@ class BioBox extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.info_outline_rounded,
                 color: AppColors.accent,
                 size: 20,

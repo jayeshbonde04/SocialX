@@ -20,6 +20,7 @@ import 'package:socialx/features/auth/presentation/components/my_textfield.dart'
 import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_state.dart';
 import 'package:socialx/features/home/presentation/pages/home_page.dart';
+import 'package:socialx/features/auth/presentation/pages/forgot_password_page.dart';
 
 // Dark mode color scheme
 const Color primaryColor = Color(0xFF1A1A1A);
@@ -104,6 +105,14 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          } else if (state is Authenticated) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const HomePage()),
@@ -133,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
                       color: accentColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.lock_open_rounded,
                       size: 64,
                       color: accentColor,
@@ -173,8 +182,10 @@ class _LoginPageState extends State<LoginPage> {
                       hintText: "Email",
                       obscuretext: false,
                       style: bodyStyle.copyWith(color: textPrimary),
+                      cursorColor: textPrimary,
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.email_outlined, color: textSecondary),
+                        prefixIcon: const Icon(Icons.email_outlined,
+                            color: textSecondary),
                         hintStyle: bodyStyle.copyWith(
                           color: textSecondary.withOpacity(0.5),
                         ),
@@ -209,8 +220,10 @@ class _LoginPageState extends State<LoginPage> {
                       hintText: "Password",
                       obscuretext: true,
                       style: bodyStyle.copyWith(color: textPrimary),
+                      cursorColor: textPrimary,
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline, color: textSecondary),
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: textSecondary),
                         hintStyle: bodyStyle.copyWith(
                           color: textSecondary.withOpacity(0.5),
                         ),
@@ -225,7 +238,26 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
+                  // Forgot Password link
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ForgotPasswordPage(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'Forgot Password?',
+                        style: bodyStyle.copyWith(color: accentColor),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
                   // Login Button
                   Container(

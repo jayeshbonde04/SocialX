@@ -34,7 +34,8 @@ class MyApp extends StatelessWidget {
         BlocProvider<ProfileCubit>(
             create: (context) => ProfileCubit(
                 profileRepo: firebaseProfileRepo,
-                storageRepo: firebaseStorageRepo)),
+                storageRepo: firebaseStorageRepo,
+                authCubit: context.read<AuthCubit>())),
 
         // Provide post cubit
         BlocProvider<PostCubit>(

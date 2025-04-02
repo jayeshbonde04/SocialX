@@ -7,6 +7,7 @@ class MyTextfield extends StatefulWidget {
   final TextStyle? style;
   final InputDecoration? decoration;
   final int? maxLines;
+  final Color? cursorColor;
   const MyTextfield({
     super.key,
     required this.controller,
@@ -15,6 +16,7 @@ class MyTextfield extends StatefulWidget {
     this.style,
     this.decoration,
     this.maxLines,
+    this.cursorColor,
   });
 
   @override
@@ -32,46 +34,74 @@ class _MyTextfieldState extends State<MyTextfield> {
 
   @override
   Widget build(BuildContext context) {
+    final defaultDecoration = InputDecoration(
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(
+          color: Theme.of(context).colorScheme.inversePrimary,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      hintText: widget.hintText,
+      hintStyle: const TextStyle(
+        color: Color(0xFFB3B3B3),
+        fontSize: 14,
+      ),
+      fillColor: Theme.of(context).colorScheme.secondary,
+      filled: true,
+    );
+
+    final mergedDecoration = widget.decoration != null
+        ? defaultDecoration.copyWith(
+            prefixIcon: widget.decoration!.prefixIcon,
+            suffixIcon: widget.obscuretext
+                ? IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: const Color(0xFFB3B3B3),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  )
+                : widget.decoration!.suffixIcon,
+            border: widget.decoration!.border,
+            contentPadding: widget.decoration!.contentPadding,
+          )
+        : defaultDecoration.copyWith(
+            suffixIcon: widget.obscuretext
+                ? IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: const Color(0xFFB3B3B3),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  )
+                : null,
+          );
+
     return TextField(
       controller: widget.controller,
       obscureText: widget.obscuretext && !_isPasswordVisible,
       style: widget.style,
       maxLines: widget.obscuretext ? 1 : widget.maxLines,
-      decoration: (widget.decoration ?? InputDecoration(
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.secondary,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.inversePrimary,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        hintText: widget.hintText,
-        hintStyle: TextStyle(
-          color: Theme.of(context).colorScheme.primary,
-          fontSize: 14,
-        ),
-        fillColor: Theme.of(context).colorScheme.secondary,
-        filled: true,
-      )).copyWith(
-        suffixIcon: widget.obscuretext
-            ? IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _isPasswordVisible = !_isPasswordVisible;
-                  });
-                },
-              )
-            : null,
-      ),
+      cursorColor: widget.cursorColor ?? Theme.of(context).colorScheme.primary,
+      decoration: mergedDecoration,
     );
   }
 }
