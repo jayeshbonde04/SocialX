@@ -43,11 +43,14 @@ class FirebaseAuthRepo implements AuthRepo {
       if (user != null) {
         // Update display name
         await user.updateDisplayName(name);
+        // Extract username from email
+        final username = email.split('@')[0].toLowerCase();
         // Create user document in Firestore
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'name': name,
           'email': email,
+          'username': username,
           'bio': '',
           'profileImageUrl': '',
           'followers': [],

@@ -16,12 +16,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:socialx/models/message.dart';
 import 'package:socialx/models/user.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -44,8 +38,8 @@ class DatabaseService {
     //get current uid
     String uid = _auth.currentUser!.uid;
 
-    //extract username from email
-    String username = email.split('@')[0];
+    //extract username from email and convert to lowercase
+    String username = email.split('@')[0].toLowerCase();
 
     //create a user profile
     Userprofile user = Userprofile(

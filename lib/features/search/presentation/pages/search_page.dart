@@ -75,53 +75,67 @@ class _SearchPageState extends State<SearchPage> {
 
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
+      if (currentUser == null) {
+        print('No current user found');
+        return;
+      }
 
       final usersRef = FirebaseFirestore.instance.collection('users');
       
-      // Search by username
-      final usernameQuery = await usersRef
-          .where('username', isGreaterThanOrEqualTo: query.toLowerCase())
-          .where('username', isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff')
-          .limit(20)
-          .get();
-
-      // Search by name
-      final nameQuery = await usersRef
-          .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThanOrEqualTo: '$query\uf8ff')
-          .limit(20)
-          .get();
-
-      // Combine and deduplicate results
-      final Set<String> seenUids = {};
+      // Convert search query to lowercase for case-insensitive search
+      final lowercaseQuery = query.toLowerCase();
+      print('Searching for query: $lowercaseQuery');
+      
+      // Get all users first
+      final allUsersSnapshot = await usersRef.get();
+      print('Total users in database: ${allUsersSnapshot.docs.length}');
+      
+      // Filter users based on username or name
       final List<Map<String, dynamic>> results = [];
-
-      // Process username results
-      for (var doc in usernameQuery.docs) {
-        if (doc.id != currentUser.uid && !seenUids.contains(doc.id)) {
-          seenUids.add(doc.id);
+      
+      for (var doc in allUsersSnapshot.docs) {
+        if (doc.id == currentUser.uid) continue; // Skip current user
+        
+        final userData = doc.data();
+        final username = userData['username']?.toString().toLowerCase() ?? '';
+        final name = userData['name']?.toString().toLowerCase() ?? '';
+        
+        print('Checking user: $username (${userData['name']})');
+        
+        if (username.contains(lowercaseQuery) || name.contains(lowercaseQuery)) {
           results.add({
             'uid': doc.id,
-            'username': doc.data()['username'] ?? '',
-            'name': doc.data()['name'] ?? '',
-            'profilePic': doc.data()['profilePic'] ?? '',
+            'username': userData['username'] ?? '',
+            'name': userData['name'] ?? '',
+            'profilePic': userData['profilePic'] ?? '',
           });
         }
       }
 
-      // Process name results
-      for (var doc in nameQuery.docs) {
-        if (doc.id != currentUser.uid && !seenUids.contains(doc.id)) {
-          seenUids.add(doc.id);
-          results.add({
-            'uid': doc.id,
-            'username': doc.data()['username'] ?? '',
-            'name': doc.data()['name'] ?? '',
-            'profilePic': doc.data()['profilePic'] ?? '',
-          });
-        }
-      }
+      print('Found ${results.length} matching users');
+      
+      // Sort results to prioritize exact matches
+      results.sort((a, b) {
+        final aUsername = a['username'].toString().toLowerCase();
+        final bUsername = b['username'].toString().toLowerCase();
+        final aName = a['name'].toString().toLowerCase();
+        final bName = b['name'].toString().toLowerCase();
+        
+        // Check for exact matches first
+        if (aUsername == lowercaseQuery) return -1;
+        if (bUsername == lowercaseQuery) return 1;
+        if (aName == lowercaseQuery) return -1;
+        if (bName == lowercaseQuery) return 1;
+        
+        // Then check for starts with matches
+        if (aUsername.startsWith(lowercaseQuery)) return -1;
+        if (bUsername.startsWith(lowercaseQuery)) return 1;
+        if (aName.startsWith(lowercaseQuery)) return -1;
+        if (bName.startsWith(lowercaseQuery)) return 1;
+        
+        // Finally, sort alphabetically
+        return aUsername.compareTo(bUsername);
+      });
 
       setState(() {
         _searchResults = results;

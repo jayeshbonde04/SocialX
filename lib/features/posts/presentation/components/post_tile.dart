@@ -7,7 +7,6 @@ import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/posts/domain/entities/comment.dart';
 import 'package:socialx/features/posts/presentation/components/comment_tile.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
-import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
 import '../../domain/entities/post.dart';
 import '../../../profile/domain/entities/profile_user.dart';
