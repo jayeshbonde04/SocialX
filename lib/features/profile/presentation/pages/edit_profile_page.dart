@@ -234,12 +234,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
           );
           Navigator.pop(context);
+        } else if (state is ProfileSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: accentColor,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Don't navigate back if we need to verify email
+          if (!state.message.contains('verify')) {
+            Navigator.pop(context);
+          }
         } else if (state is ProfileErrors) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
               backgroundColor: errorColor,
-              duration: const Duration(seconds: 2),
+              duration: const Duration(seconds: 3),
             ),
           );
         }

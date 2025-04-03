@@ -12,27 +12,29 @@ import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart
 import '../../../posts/presentation/components/post_tile.dart';
 import '../../../posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/search/presentation/pages/search_page.dart';
+import 'package:socialx/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:socialx/features/notifications/presentation/cubits/notification_cubit.dart';
+import 'package:socialx/features/notifications/presentation/cubits/notification_states.dart';
+import 'package:socialx/features/auth/domain/entities/app_users.dart';
+import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
+import 'package:socialx/features/chats/presentation/pages/chat_page.dart';
+import 'package:socialx/themes/app_colors.dart';
 
 /*
  HOME PAGE
  This is the main page of this app: it displays a list of posts.
  */
 
-// Dark mode color scheme
-const Color primaryColor =
-    Color(0xFF1A1A1A); // Dark background for primary elements
-const Color secondaryColor =
-    Color(0xFF2D2D2D); // Slightly lighter dark for secondary elements
-const Color accentColor =
-    Color(0xFF6C63FF); // Purple accent for interactive elements
-const Color backgroundColor =
-    Color(0xFF121212); // Darkest shade for backgrounds
-const Color surfaceColor = Color(0xFF1E1E1E); // Dark surface for cards
-const Color textPrimary = Color(0xFFFFFFFF); // White text for primary content
-const Color textSecondary =
-    Color(0xFFB3B3B3); // Light gray text for secondary content
-const Color dividerColor = Color(0xFF2D2D2D); // Dark gray for dividers
-const Color errorColor = Color(0xFFFF4B4B); // Red for errors and delete actions
+// Theme Colors - Yellow, White, and Black
+const Color primaryColor = Color(0xFF000000); // Black
+const Color secondaryColor = Color(0xFF1A1A1A); // Dark gray for contrast
+const Color accentColor = Color(0xFFFFD700); // Gold/Yellow for highlights
+const Color backgroundColor = Color(0xFF121212); // Dark background
+const Color surfaceColor = Color(0xFF000000); // Slightly lighter black
+const Color textPrimary = Color(0xFFFFFFFF); // White text
+const Color textSecondary = Color(0xFFB3B3B3); // Light gray text
+const Color dividerColor = Color(0xFF2D2D2D); // Dark gray dividers
+const Color errorColor = Color(0xFFFF4B4B); // Red for errors
 
 // Text styles
 final TextStyle titleStyle = GoogleFonts.poppins(
@@ -78,9 +80,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    //fetch all posts
+    // Initialize notifications first
+    initializeNotifications();
+    // Then fetch posts and following
     fetchAllPosts();
-    //fetch following list
     fetchFollowing();
   }
 
@@ -89,10 +92,16 @@ class _HomePageState extends State<HomePage> {
     super.didChangeDependencies();
     // Refresh following list when returning to home page
     fetchFollowing();
+    // Refresh notifications when returning to home page
+    refreshNotifications();
   }
 
   void fetchAllPosts() {
     postCubit.fetchAllPosts();
+  }
+
+  void refreshNotifications() {
+    context.read<NotificationCubit>().refreshNotifications();
   }
 
   Future<void> fetchFollowing() async {
@@ -169,6 +178,16 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void initializeNotifications() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      print('Initializing notifications for user: ${currentUser.uid}');
+      context.read<NotificationCubit>().initializeNotifications(currentUser.uid);
+    } else {
+      print('No current user found for notification initialization');
+    }
+  }
+
   // Build UI
   @override
   Widget build(BuildContext context) {
@@ -198,7 +217,76 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+        foregroundColor: AppColors.textPrimary,
         actions: [
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              print('HomePage: Notification state: ${state.toString()}');
+              
+              if (state is NotificationLoaded) {
+                final unreadCount = state.notifications
+                    .where((notification) => !notification.isRead)
+                    .length;
+                print('HomePage: Unread notifications count: $unreadCount');
+                
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_rounded,
+                        color: AppColors.textSecondary,
+                      ),
+                      onPressed: () {
+                        print('HomePage: Notification icon pressed');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            unreadCount.toString(),
+                            style: GoogleFonts.poppins(
+                              color: AppColors.textPrimary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }
+              print('HomePage: Using default notification icon');
+              return IconButton(
+                icon: Icon(
+                  Icons.notifications_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: () {
+                  print('HomePage: Default notification icon pressed');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsPage(),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.message_rounded, color: Colors.blue),
             onPressed: () {
@@ -209,7 +297,6 @@ class _HomePageState extends State<HomePage> {
             },
             tooltip: 'Messages',
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: BlocBuilder<PostCubit, PostState>(

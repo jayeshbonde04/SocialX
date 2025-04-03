@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
 import 'package:socialx/features/auth/presentation/components/my_textfield.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
-import 'package:socialx/features/posts/domain/entities/comment.dart';
 import 'package:socialx/features/posts/presentation/components/comment_tile.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
@@ -207,17 +206,13 @@ class _PostTileState extends State<PostTile> {
 
   //add comment
   void addComment() {
-    //create a new comment
-    final newComment = Comment(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        postId: widget.post.id,
-        userId: currentUser!.uid,
-        userName: currentUser!.name,
-        text: commentTextController.text);
-
     //addd comment using cubit
     if (commentTextController.text.isNotEmpty) {
-      postCubit.addComment(widget.post.id, newComment);
+      postCubit.addComment(
+        widget.post.id, 
+        currentUser!.uid, 
+        commentTextController.text
+      );
     }
   }
 

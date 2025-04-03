@@ -18,6 +18,12 @@ class ProfileLoaded extends ProfileStates{
   ProfileLoaded(this.profileUser);
 }
 
+//success
+class ProfileSuccess extends ProfileStates{
+  final String message;
+  ProfileSuccess(this.message);
+}
+
 //errors
 class ProfileErrors extends ProfileStates{
   final String message;

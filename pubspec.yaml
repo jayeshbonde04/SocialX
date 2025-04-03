@@ -24,6 +24,9 @@ dependencies:
   flutter_bloc: ^9.0.0
   firebase_storage: ^12.4.4
 
+  # Notifications
+  flutter_local_notifications: ^19.0.0
+
   # files
   cached_network_image: ^3.4.1
   file_picker: ^9.2.0

@@ -123,6 +123,24 @@ class FirebaseProfileRepo implements ProfileRepo {
           'following': currentFollowing,
         }),
       ]);
+
+      // Create notification when user follows (not when unfollowing)
+      if (!isFollowing) {
+        // Get current user's name
+        final currentUserName = currentUserData['name'] ?? 'Someone';
+        
+        await firebaseFirestore.collection('notifications').add({
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'userId': targetUserId,
+          'actorId': currentUserId,
+          'type': 'follow',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'metadata': {
+            'actorName': currentUserName,
+          },
+        });
+      }
     } catch (e) {
       print("Error toggling follow: $e");
       throw Exception(e);

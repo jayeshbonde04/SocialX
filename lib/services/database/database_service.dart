@@ -230,6 +230,10 @@ MESSAGING FEATURE
       final String currentUserEmail = _auth.currentUser!.email!;
       final Timestamp timestamp = Timestamp.now();
 
+      // Get current user's name
+      final currentUserDoc = await _db.collection('users').doc(currentUserId).get();
+      final currentUserName = currentUserDoc.data()?['name'] ?? 'Someone';
+
       // Create a new message
       Message newMessage = Message(
         senderID: currentUserEmail,
@@ -261,6 +265,22 @@ MESSAGING FEATURE
           .doc(chatRoomID)
           .collection("messages")
           .add(newMessage.toMap());
+
+      // Create notification for the receiver
+      await _db.collection("notifications").add({
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'userId': receiverID,
+        'actorId': currentUserId,
+        'type': 'message',
+        'timestamp': timestamp,
+        'isRead': false,
+        'metadata': {
+          'message': message,
+          'type': type.toString(),
+          'mediaUrl': mediaUrl,
+          'actorName': currentUserName,
+        },
+      });
 
       print("Message sent successfully to chat room: $chatRoomID");
     } catch (e) {
@@ -354,10 +374,20 @@ MESSAGING FEATURE
       if (user != null) {
         final String userId = user.uid;
 
-        // 1. Delete user's posts
-        final postsSnapshot =
-            await _db.collection('posts').where('uid', isEqualTo: userId).get();
+        // 1. Delete user's posts and associated data
+        final postsSnapshot = await _db.collection('posts').where('uid', isEqualTo: userId).get();
         for (var doc in postsSnapshot.docs) {
+          // Delete post comments
+          final commentsSnapshot = await doc.reference.collection('comments').get();
+          for (var comment in commentsSnapshot.docs) {
+            await comment.reference.delete();
+          }
+          // Delete post likes
+          final likesSnapshot = await doc.reference.collection('likes').get();
+          for (var like in likesSnapshot.docs) {
+            await like.reference.delete();
+          }
+          // Delete the post itself
           await doc.reference.delete();
         }
 
@@ -365,15 +395,10 @@ MESSAGING FEATURE
         await _db.collection('users').doc(userId).delete();
 
         // 3. Delete user's chat rooms and messages
-        final chatRoomsSnapshot = await _db
-            .collection('chat_rooms')
-            .where('participants', arrayContains: userId)
-            .get();
-
+        final chatRoomsSnapshot = await _db.collection('chat_rooms').where('participants', arrayContains: userId).get();
         for (var chatRoom in chatRoomsSnapshot.docs) {
           // Delete all messages in the chat room
-          final messagesSnapshot =
-              await chatRoom.reference.collection('messages').get();
+          final messagesSnapshot = await chatRoom.reference.collection('messages').get();
           for (var message in messagesSnapshot.docs) {
             await message.reference.delete();
           }
@@ -381,13 +406,22 @@ MESSAGING FEATURE
           await chatRoom.reference.delete();
         }
 
-        // 4. Remove user from other users' followers/following lists
+        // 4. Remove user from other users' followers/following lists and update their lists
         final allUsersSnapshot = await _db.collection('users').get();
         for (var userDoc in allUsersSnapshot.docs) {
           if (userDoc.id != userId) {
+            final userData = userDoc.data();
+            List<dynamic> followers = List<dynamic>.from(userData['followers'] ?? []);
+            List<dynamic> following = List<dynamic>.from(userData['following'] ?? []);
+            
+            // Remove the deleted user from followers and following lists
+            followers.remove(userId);
+            following.remove(userId);
+            
+            // Update the user document with cleaned lists
             await userDoc.reference.update({
-              'followers': FieldValue.arrayRemove([userId]),
-              'following': FieldValue.arrayRemove([userId]),
+              'followers': followers,
+              'following': following,
             });
           }
         }
@@ -406,8 +440,68 @@ MESSAGING FEATURE
           print('Error deleting profile image: $e');
         }
 
-        // 6. Finally, delete the user's authentication account
+        // 6. Delete any notifications for the user
+        final notificationsSnapshot = await _db.collection('notifications').where('userId', isEqualTo: userId).get();
+        for (var notification in notificationsSnapshot.docs) {
+          await notification.reference.delete();
+        }
+
+        // 7. Delete any reports made by the user
+        final reportsSnapshot = await _db.collection('reports').where('reporterId', isEqualTo: userId).get();
+        for (var report in reportsSnapshot.docs) {
+          await report.reference.delete();
+        }
+
+        // 8. Delete any blocked users list
+        final blockedUsersSnapshot = await _db.collection('blocked_users').where('userId', isEqualTo: userId).get();
+        for (var blockedUser in blockedUsersSnapshot.docs) {
+          await blockedUser.reference.delete();
+        }
+
+        // 9. Delete any user settings
+        final settingsSnapshot = await _db.collection('user_settings').where('userId', isEqualTo: userId).get();
+        for (var setting in settingsSnapshot.docs) {
+          await setting.reference.delete();
+        }
+
+        // 10. Delete any user activity logs
+        final activityLogsSnapshot = await _db.collection('activity_logs').where('userId', isEqualTo: userId).get();
+        for (var log in activityLogsSnapshot.docs) {
+          await log.reference.delete();
+        }
+
+        // 11. Delete any user search history
+        final searchHistorySnapshot = await _db.collection('search_history').where('userId', isEqualTo: userId).get();
+        for (var history in searchHistorySnapshot.docs) {
+          await history.reference.delete();
+        }
+
+        // 12. Delete any user preferences
+        final preferencesSnapshot = await _db.collection('user_preferences').where('userId', isEqualTo: userId).get();
+        for (var preference in preferencesSnapshot.docs) {
+          await preference.reference.delete();
+        }
+
+        // 13. Update any lists or collections that might reference the user
+        final listsSnapshot = await _db.collection('lists').where('members', arrayContains: userId).get();
+        for (var list in listsSnapshot.docs) {
+          await list.reference.update({
+            'members': FieldValue.arrayRemove([userId])
+          });
+        }
+
+        // 14. Update any groups that might have the user as a member
+        final groupsSnapshot = await _db.collection('groups').where('members', arrayContains: userId).get();
+        for (var group in groupsSnapshot.docs) {
+          await group.reference.update({
+            'members': FieldValue.arrayRemove([userId])
+          });
+        }
+
+        // 15. Finally, delete the user's authentication account
         await user.delete();
+
+        print('Successfully deleted all user data from Firestore and Authentication');
       }
     } catch (e) {
       print('Error deleting account: $e');
