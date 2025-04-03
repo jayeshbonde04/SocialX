@@ -135,323 +135,330 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
               ],
             ),
-            body: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  // Profile Picture
-                  Center(
-                    child: CachedNetworkImage(
-                      imageUrl: user.profileImageUrl,
-                      placeholder: (context, url) => CircularProgressIndicator(
-                        color: AppColors.accent,
-                        strokeWidth: 3,
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.surface,
+            body: RefreshIndicator(
+              color: AppColors.accent,
+              onRefresh: () async {
+                await profileCubit.refreshProfile(widget.uid);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    // Profile Picture
+                    Center(
+                      child: CachedNetworkImage(
+                        imageUrl: user.profileImageUrl,
+                        placeholder: (context, url) => CircularProgressIndicator(
+                          color: AppColors.accent,
+                          strokeWidth: 3,
                         ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 72,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      imageBuilder: (context, imageProvider) => Container(
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: imageProvider,
-                            fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          height: 120,
+                          width: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.surface,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.shadow,
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 72,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        imageBuilder: (context, imageProvider) => Container(
+                          height: 120,
+                          width: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              image: imageProvider,
+                              fit: BoxFit.cover,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.shadow,
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Stats Row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildStatColumn(
+                            'Posts',
+                            BlocBuilder<PostCubit, PostState>(
+                              builder: (context, state) {
+                                if (state is PostsLoaded) {
+                                  final userPost = state.posts
+                                      .where((post) => post.userId == widget.uid)
+                                      .toList();
+                                  return _buildStatValue(
+                                      userPost.length.toString());
+                                }
+                                return _buildStatValue('0');
+                              },
+                            ),
+                          ),
+                          _buildStatColumn(
+                            'Followers',
+                            _buildStatValue(user.followers.length.toString()),
+                          ),
+                          _buildStatColumn(
+                            'Following',
+                            _buildStatValue(user.following.length.toString()),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Bio Section
+                    BioBox(text: user.bio),
+                    if (currentUser?.uid != user.uid) ...[
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {
+                                profileCubit.toggleFollow(
+                                    user.uid, currentUser!.uid);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    user.followers.contains(currentUser!.uid)
+                                        ? AppColors.secondary
+                                        : AppColors.accent,
+                                foregroundColor: AppColors.textPrimary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                user.followers.contains(currentUser!.uid)
+                                    ? 'Unfollow'
+                                    : 'Follow',
+                                style: buttonStyle.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatPage(
+                                      receiverUserEmail: user.email,
+                                      receiverUserID: user.uid,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondary,
+                                foregroundColor: AppColors.textPrimary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Message',
+                                style: buttonStyle.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Stats Row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildStatColumn(
-                          'Posts',
-                          BlocBuilder<PostCubit, PostState>(
-                            builder: (context, state) {
-                              if (state is PostsLoaded) {
-                                final userPost = state.posts
-                                    .where((post) => post.userId == widget.uid)
-                                    .toList();
-                                return _buildStatValue(
-                                    userPost.length.toString());
-                              }
-                              return _buildStatValue('0');
-                            },
-                          ),
-                        ),
-                        _buildStatColumn(
-                          'Followers',
-                          _buildStatValue(user.followers.length.toString()),
-                        ),
-                        _buildStatColumn(
-                          'Following',
-                          _buildStatValue(user.following.length.toString()),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Bio Section
-                  BioBox(text: user.bio),
-                  if (currentUser?.uid != user.uid) ...[
+                    ],
                     const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              profileCubit.toggleFollow(
-                                  user.uid, currentUser!.uid);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  user.followers.contains(currentUser!.uid)
-                                      ? AppColors.secondary
-                                      : AppColors.accent,
-                              foregroundColor: AppColors.textPrimary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              user.followers.contains(currentUser!.uid)
-                                  ? 'Unfollow'
-                                  : 'Follow',
-                              style: buttonStyle.copyWith(
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
+                    // Toggle Bar
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 25),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.shadow,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ChatPage(
-                                    receiverUserEmail: user.email,
-                                    receiverUserID: user.uid,
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => showPhotos = true),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: showPhotos
+                                      ? AppColors.accent
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12),
                                   ),
                                 ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.secondary,
-                              foregroundColor: AppColors.textPrimary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.photo_library_rounded,
+                                      color: showPhotos
+                                          ? AppColors.textPrimary
+                                          : AppColors.textSecondary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Photos',
+                                      style: buttonStyle.copyWith(
+                                        color: showPhotos
+                                            ? AppColors.textPrimary
+                                            : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            child: Text(
-                              'Message',
-                              style: buttonStyle.copyWith(
-                                color: AppColors.textPrimary,
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => showPhotos = false),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: !showPhotos
+                                      ? AppColors.accent
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      color: !showPhotos
+                                          ? AppColors.textPrimary
+                                          : AppColors.textSecondary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Tweets',
+                                      style: buttonStyle.copyWith(
+                                        color: !showPhotos
+                                            ? AppColors.textPrimary
+                                            : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    // Content Section
+                    if (showPhotos)
+                      // Photos Grid
+                      BlocBuilder<PostCubit, PostState>(
+                        builder: (context, state) {
+                          if (state is PostsLoaded) {
+                            final userPosts = state.posts
+                                .where((post) =>
+                                    post.userId == widget.uid &&
+                                    post.imageUrl.isNotEmpty)
+                                .toList();
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: userPosts.length,
+                              itemBuilder: (context, index) {
+                                final post = userPosts[index];
+                                return PostTile(
+                                  post: post,
+                                  onDeletePressed: () {
+                                    // Handle post deletion if needed
+                                  },
+                                );
+                              },
+                            );
+                          }
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.accent,
+                              strokeWidth: 3,
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      // Twitter Posts (text-only)
+                      BlocBuilder<PostCubit, PostState>(
+                        builder: (context, state) {
+                          if (state is PostsLoaded) {
+                            final userPosts = state.posts
+                                .where((post) =>
+                                    post.userId == widget.uid &&
+                                    post.imageUrl.isEmpty)
+                                .toList();
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: userPosts.length,
+                              itemBuilder: (context, index) {
+                                final post = userPosts[index];
+                                return PostTile(
+                                  post: post,
+                                  onDeletePressed: () {
+                                    // Handle post deletion if needed
+                                  },
+                                );
+                              },
+                            );
+                          }
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.accent,
+                              strokeWidth: 3,
+                            ),
+                          );
+                        },
+                      ),
                   ],
-                  const SizedBox(height: 20),
-                  // Toggle Bar
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 25),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => showPhotos = true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: showPhotos
-                                    ? AppColors.accent
-                                    : Colors.transparent,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(12),
-                                  bottomLeft: Radius.circular(12),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.photo_library_rounded,
-                                    color: showPhotos
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Photos',
-                                    style: buttonStyle.copyWith(
-                                      color: showPhotos
-                                          ? AppColors.textPrimary
-                                          : AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => showPhotos = false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: !showPhotos
-                                    ? AppColors.accent
-                                    : Colors.transparent,
-                                borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(12),
-                                  bottomRight: Radius.circular(12),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.chat_bubble_outline_rounded,
-                                    color: !showPhotos
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Tweets',
-                                    style: buttonStyle.copyWith(
-                                      color: !showPhotos
-                                          ? AppColors.textPrimary
-                                          : AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Content Section
-                  if (showPhotos)
-                    // Photos Grid
-                    BlocBuilder<PostCubit, PostState>(
-                      builder: (context, state) {
-                        if (state is PostsLoaded) {
-                          final userPosts = state.posts
-                              .where((post) =>
-                                  post.userId == widget.uid &&
-                                  post.imageUrl.isNotEmpty)
-                              .toList();
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: userPosts.length,
-                            itemBuilder: (context, index) {
-                              final post = userPosts[index];
-                              return PostTile(
-                                post: post,
-                                onDeletePressed: () {
-                                  // Handle post deletion if needed
-                                },
-                              );
-                            },
-                          );
-                        }
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.accent,
-                            strokeWidth: 3,
-                          ),
-                        );
-                      },
-                    )
-                  else
-                    // Twitter Posts (text-only)
-                    BlocBuilder<PostCubit, PostState>(
-                      builder: (context, state) {
-                        if (state is PostsLoaded) {
-                          final userPosts = state.posts
-                              .where((post) =>
-                                  post.userId == widget.uid &&
-                                  post.imageUrl.isEmpty)
-                              .toList();
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: userPosts.length,
-                            itemBuilder: (context, index) {
-                              final post = userPosts[index];
-                              return PostTile(
-                                post: post,
-                                onDeletePressed: () {
-                                  // Handle post deletion if needed
-                                },
-                              );
-                            },
-                          );
-                        }
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.accent,
-                            strokeWidth: 3,
-                          ),
-                        );
-                      },
-                    ),
-                ],
+                ),
               ),
             ),
             bottomNavigationBar: BottomNavigationBar(

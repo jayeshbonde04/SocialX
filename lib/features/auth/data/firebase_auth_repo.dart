@@ -3,10 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
 import 'package:socialx/features/auth/domain/repos/auth_repo.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:socialx/services/database/database_service.dart';
 
 class FirebaseAuthRepo implements AuthRepo {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore firebaseFirestore = FirebaseFirestore.instance;
+  final DatabaseService _databaseService = DatabaseService();
 
   @override
   Future<AppUsers?> getCurrentUsers() async {
@@ -97,8 +99,6 @@ class FirebaseAuthRepo implements AuthRepo {
     try {
       final user = firebaseAuth.currentUser;
       if (user != null) {
-        final String userId = user.uid;
-
         // First, reauthenticate the user with current password
         try {
           final credential = EmailAuthProvider.credential(
@@ -108,68 +108,11 @@ class FirebaseAuthRepo implements AuthRepo {
           await user.reauthenticateWithCredential(credential);
         } catch (e) {
           print('Reauthentication error: $e');
-          throw Exception(
-              'Failed to reauthenticate user. Please check your password and try again.');
+          throw Exception('Failed to reauthenticate user. Please check your password and try again.');
         }
 
-        // 1. Delete user's posts
-        final postsSnapshot = await firebaseFirestore
-            .collection('posts')
-            .where('uid', isEqualTo: userId)
-            .get();
-        for (var doc in postsSnapshot.docs) {
-          await doc.reference.delete();
-        }
-
-        // 2. Delete user's profile data
-        await firebaseFirestore.collection('users').doc(userId).delete();
-
-        // 3. Delete user's chat rooms and messages
-        final chatRoomsSnapshot = await firebaseFirestore
-            .collection('chat_rooms')
-            .where('participants', arrayContains: userId)
-            .get();
-
-        for (var chatRoom in chatRoomsSnapshot.docs) {
-          // Delete all messages in the chat room
-          final messagesSnapshot =
-              await chatRoom.reference.collection('messages').get();
-          for (var message in messagesSnapshot.docs) {
-            await message.reference.delete();
-          }
-          // Delete the chat room itself
-          await chatRoom.reference.delete();
-        }
-
-        // 4. Remove user from other users' followers/following lists
-        final allUsersSnapshot =
-            await firebaseFirestore.collection('users').get();
-        for (var userDoc in allUsersSnapshot.docs) {
-          if (userDoc.id != userId) {
-            await userDoc.reference.update({
-              'followers': FieldValue.arrayRemove([userId]),
-              'following': FieldValue.arrayRemove([userId]),
-            });
-          }
-        }
-
-        // 5. Delete user's profile image from storage if exists
-        try {
-          final userDoc =
-              await firebaseFirestore.collection('users').doc(userId).get();
-          if (userDoc.exists) {
-            final profileImageUrl = userDoc.data()?['profileImageUrl'];
-            if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-              final ref = FirebaseStorage.instance.refFromURL(profileImageUrl);
-              await ref.delete();
-            }
-          }
-        } catch (e) {
-          print('Error deleting profile image: $e');
-        }
-
-        // 6. Finally, delete the user's authentication account
-        await user.delete();
+        // Use the comprehensive deletion method from DatabaseService
+        await _databaseService.deleteAccount();
       }
     } catch (e) {
       print('Error deleting account: $e');
@@ -192,15 +135,33 @@ class FirebaseAuthRepo implements AuthRepo {
         // Reauthenticate the user
         await user.reauthenticateWithCredential(credential);
 
+        // Check if the current email is verified
+        if (!user.emailVerified) {
+          // Send verification email to the current email
+          await user.sendEmailVerification();
+          throw Exception('Please verify your current email before changing it. A verification email has been sent.');
+        }
+
         // Now update the email in Firebase Auth
         await user.updateEmail(newEmail);
+        
+        // Send verification email to the new email
+        await user.sendEmailVerification();
 
         // Update email in Firestore
         await firebaseFirestore.collection('users').doc(user.uid).update({
           'email': newEmail,
         });
+
+        // Force refresh the user token to ensure the new email is reflected
+        await user.reload();
+        
+        print('Email updated successfully in both Firebase Auth and Firestore. Please verify your new email.');
+      } else {
+        throw Exception('No user logged in');
       }
     } catch (e) {
+      print('Error updating email: $e');
       throw Exception('Failed to update email: $e');
     }
   }

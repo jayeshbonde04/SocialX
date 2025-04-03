@@ -92,7 +92,7 @@ class FirebasePostRepo implements PostRepo {
   }
 
   @override
-  Future<void> addComment(String postId, Comment comment) async {
+  Future<String> addComment(String postId, String userId, String comment) async {
     try {
       // get post document
       final postDoc = await postsCollection.doc(postId).get();
@@ -100,14 +100,31 @@ class FirebasePostRepo implements PostRepo {
       if (postDoc.exists) {
         //convert json object -> post
         final post = Post.fromJson(postDoc.data() as Map<String, dynamic>);
+        
+        // Get user data
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final userData = userDoc.data() as Map<String, dynamic>;
+        final userName = userData['name'] as String;
+        
+        // Create a new comment
+        final commentId = DateTime.now().millisecondsSinceEpoch.toString();
+        final newComment = Comment(
+          id: commentId,
+          postId: postId,
+          userId: userId,
+          userName: userName,
+          text: comment,
+        );
 
-        //add the new  comment
-        post.comment.add(comment);
+        //add the new comment
+        post.comment.add(newComment);
 
         //update the post document in firestore
         await postsCollection.doc(postId).update({
           'comment': post.comment.map((comment) => comment.toJson()).toList()
         });
+        
+        return commentId;
       } else {
         throw Exception("post not found");
       }
@@ -138,6 +155,39 @@ class FirebasePostRepo implements PostRepo {
       }
     } catch (e) {
       throw Exception("Error adding comment $e");
+    }
+  }
+
+  @override
+  Future<Post?> getPost(String postId) async {
+    try {
+      final postDoc = await postsCollection.doc(postId).get();
+      if (postDoc.exists) {
+        return Post.fromJson(postDoc.data() as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      throw Exception("Error getting post: $e");
+    }
+  }
+
+  @override
+  Future<void> likePost(String postId, String userId) async {
+    try {
+      final postDoc = await postsCollection.doc(postId).get();
+      if (postDoc.exists) {
+        final post = Post.fromJson(postDoc.data() as Map<String, dynamic>);
+        if (!post.likes.contains(userId)) {
+          post.likes.add(userId);
+          await postsCollection.doc(postId).update({
+            'likes': post.likes,
+          });
+        }
+      } else {
+        throw Exception('Post not found');
+      }
+    } catch (e) {
+      throw Exception("Error liking post: $e");
     }
   }
 }

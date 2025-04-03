@@ -12,6 +12,13 @@ import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart
 import '../../../posts/presentation/components/post_tile.dart';
 import '../../../posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/search/presentation/pages/search_page.dart';
+import 'package:socialx/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:socialx/features/notifications/presentation/cubits/notification_cubit.dart';
+import 'package:socialx/features/notifications/presentation/cubits/notification_states.dart';
+import 'package:socialx/features/auth/domain/entities/app_users.dart';
+import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
+import 'package:socialx/features/chats/presentation/pages/chat_page.dart';
+import 'package:socialx/themes/app_colors.dart';
 
 /*
  HOME PAGE
@@ -78,9 +85,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    //fetch all posts
+    // Initialize notifications first
+    initializeNotifications();
+    // Then fetch posts and following
     fetchAllPosts();
-    //fetch following list
     fetchFollowing();
   }
 
@@ -89,10 +97,16 @@ class _HomePageState extends State<HomePage> {
     super.didChangeDependencies();
     // Refresh following list when returning to home page
     fetchFollowing();
+    // Refresh notifications when returning to home page
+    refreshNotifications();
   }
 
   void fetchAllPosts() {
     postCubit.fetchAllPosts();
+  }
+
+  void refreshNotifications() {
+    context.read<NotificationCubit>().refreshNotifications();
   }
 
   Future<void> fetchFollowing() async {
@@ -169,6 +183,16 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void initializeNotifications() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      print('Initializing notifications for user: ${currentUser.uid}');
+      context.read<NotificationCubit>().initializeNotifications(currentUser.uid);
+    } else {
+      print('No current user found for notification initialization');
+    }
+  }
+
   // Build UI
   @override
   Widget build(BuildContext context) {
@@ -198,7 +222,76 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+        foregroundColor: AppColors.textPrimary,
         actions: [
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              print('HomePage: Notification state: ${state.toString()}');
+              
+              if (state is NotificationLoaded) {
+                final unreadCount = state.notifications
+                    .where((notification) => !notification.isRead)
+                    .length;
+                print('HomePage: Unread notifications count: $unreadCount');
+                
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_rounded,
+                        color: AppColors.textSecondary,
+                      ),
+                      onPressed: () {
+                        print('HomePage: Notification icon pressed');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            unreadCount.toString(),
+                            style: GoogleFonts.poppins(
+                              color: AppColors.textPrimary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }
+              print('HomePage: Using default notification icon');
+              return IconButton(
+                icon: Icon(
+                  Icons.notifications_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: () {
+                  print('HomePage: Default notification icon pressed');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsPage(),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.message_rounded, color: Colors.blue),
             onPressed: () {
@@ -209,7 +302,6 @@ class _HomePageState extends State<HomePage> {
             },
             tooltip: 'Messages',
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: BlocBuilder<PostCubit, PostState>(
