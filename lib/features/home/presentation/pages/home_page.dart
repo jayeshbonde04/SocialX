@@ -25,42 +25,6 @@ import 'package:socialx/themes/app_colors.dart';
  This is the main page of this app: it displays a list of posts.
  */
 
-// Theme Colors - Yellow, White, and Black
-const Color primaryColor = Color(0xFF000000); // Black
-const Color secondaryColor = Color(0xFF1A1A1A); // Dark gray for contrast
-const Color accentColor = Color(0xFFFFD700); // Gold/Yellow for highlights
-const Color backgroundColor = Color(0xFF121212); // Dark background
-const Color surfaceColor = Color(0xFF000000); // Slightly lighter black
-const Color textPrimary = Color(0xFFFFFFFF); // White text
-const Color textSecondary = Color(0xFFB3B3B3); // Light gray text
-const Color dividerColor = Color(0xFF2D2D2D); // Dark gray dividers
-const Color errorColor = Color(0xFFFF4B4B); // Red for errors
-
-// Text styles
-final TextStyle titleStyle = GoogleFonts.poppins(
-  color: textPrimary,
-  fontWeight: FontWeight.bold,
-  fontSize: 24,
-  letterSpacing: 0.5,
-);
-
-final TextStyle subtitleStyle = GoogleFonts.poppins(
-  color: textSecondary,
-  fontSize: 16,
-  fontWeight: FontWeight.w500,
-);
-
-final TextStyle bodyStyle = GoogleFonts.poppins(
-  color: textSecondary,
-  fontSize: 14,
-);
-
-final TextStyle buttonStyle = GoogleFonts.poppins(
-  color: accentColor,
-  fontSize: 12,
-  fontWeight: FontWeight.w600,
-);
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -192,28 +156,32 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: surfaceColor,
+        elevation: 1,
+        backgroundColor: AppColors.shadow,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding:  EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
+                color: AppColors.accent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.home_rounded,
-                color: accentColor,
+                color: AppColors.accent,
                 size: 28,
               ),
             ),
             const SizedBox(width: 12),
             Text(
               'SocialX',
-              style: titleStyle,
+              style: GoogleFonts.poppins(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+              ),
             ),
           ],
         ),
@@ -222,17 +190,17 @@ class _HomePageState extends State<HomePage> {
           BlocBuilder<NotificationCubit, NotificationState>(
             builder: (context, state) {
               print('HomePage: Notification state: ${state.toString()}');
-              
+
               if (state is NotificationLoaded) {
                 final unreadCount = state.notifications
                     .where((notification) => !notification.isRead)
                     .length;
                 print('HomePage: Unread notifications count: $unreadCount');
-                
+
                 return Stack(
                   children: [
                     IconButton(
-                      icon: Icon(
+                      icon: const Icon(
                         Icons.notifications_rounded,
                         color: AppColors.textSecondary,
                       ),
@@ -252,7 +220,7 @@ class _HomePageState extends State<HomePage> {
                         top: 8,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: AppColors.accent,
                             shape: BoxShape.circle,
                           ),
@@ -269,14 +237,14 @@ class _HomePageState extends State<HomePage> {
                   ],
                 );
               }
-              print('HomePage: Using default notification icon');
+              //print('HomePage: Using default notification icon');
               return IconButton(
-                icon: Icon(
+                icon: const Icon(
                   Icons.notifications_rounded,
                   color: AppColors.textSecondary,
                 ),
                 onPressed: () {
-                  print('HomePage: Default notification icon pressed');
+                  //print('HomePage: Default notification icon pressed');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -305,7 +273,7 @@ class _HomePageState extends State<HomePage> {
           if (state is PostsLoading && state is PostsUploading) {
             return const Center(
               child: CircularProgressIndicator(
-                color: accentColor,
+                color: AppColors.accent,
                 strokeWidth: 3,
               ),
             );
@@ -314,8 +282,8 @@ class _HomePageState extends State<HomePage> {
           else if (state is PostsLoaded) {
             final allPosts = state.posts;
             // Filter posts to only show regular posts from users you follow
-            final filteredPosts = allPosts.where((post) => 
-              following.contains(post.userId) && post.type == PostType.regular
+            final filteredPosts = allPosts.where((post) =>
+            following.contains(post.userId) && post.type == PostType.regular
             ).toList();
 
             if (filteredPosts.isEmpty) {
@@ -326,32 +294,36 @@ class _HomePageState extends State<HomePage> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.1),
+                        color: AppColors.accent.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.people_outline_rounded,
                         size: 64,
-                        color: accentColor,
+                        color: AppColors.accent,
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No posts to show',
-                      style: subtitleStyle,
+                      style: GoogleFonts.poppins(
+                        color: AppColors.textSecondary
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Follow some users to see their posts here!',
-                      style: bodyStyle,
+                      style: GoogleFonts.poppins(
+                          color: AppColors.textSecondary
+                      ),
                     ),
                   ],
                 ),
               );
             }
             return RefreshIndicator(
-              color: accentColor,
-              backgroundColor: surfaceColor,
+              color: AppColors.accent,
+              backgroundColor: AppColors.surface,
               onRefresh: () async {
                 await Future.wait([
                   Future(() => fetchAllPosts()),
@@ -367,9 +339,9 @@ class _HomePageState extends State<HomePage> {
 
                   return Container(
                     margin:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: surfaceColor,
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -397,13 +369,13 @@ class _HomePageState extends State<HomePage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: errorColor.withOpacity(0.1),
+                      color: AppColors.error.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.error_outline,
                       size: 64,
-                      color: errorColor,
+                      color: AppColors.error,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -411,7 +383,7 @@ class _HomePageState extends State<HomePage> {
                     state.message,
                     style: GoogleFonts.poppins(
                       fontSize: 16,
-                      color: errorColor,
+                      color: AppColors.error,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
@@ -426,7 +398,7 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: surfaceColor,
+          color: AppColors.surface,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
@@ -439,11 +411,17 @@ class _HomePageState extends State<HomePage> {
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
-          backgroundColor: surfaceColor,
-          selectedItemColor: accentColor,
-          unselectedItemColor: textSecondary,
-          selectedLabelStyle: buttonStyle,
-          unselectedLabelStyle: bodyStyle,
+          backgroundColor: AppColors.surface,
+          selectedItemColor: AppColors.accent,
+          unselectedItemColor: AppColors.textSecondary,
+          selectedLabelStyle: GoogleFonts.poppins(
+            color: AppColors.buttonPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: GoogleFonts.poppins(
+            color: AppColors.buttonDisabled,
+            fontWeight: FontWeight.w500,
+          ),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),

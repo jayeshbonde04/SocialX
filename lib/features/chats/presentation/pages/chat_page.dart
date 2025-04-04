@@ -12,36 +12,6 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
-// Reuse the same color scheme
-const Color primaryColor = Color(0xFF1A1A1A);
-const Color secondaryColor = Color(0xFF2D2D2D);
-const Color accentColor = Color(0xFF6C63FF);
-const Color backgroundColor = Color(0xFF121212);
-const Color surfaceColor = Color(0xFF1E1E1E);
-const Color textPrimary = Color(0xFFFFFFFF);
-const Color textSecondary = Color(0xFFB3B3B3);
-const Color dividerColor = Color(0xFF2D2D2D);
-const Color errorColor = Color(0xFFFF4B4B);
-
-// Text styles
-final TextStyle titleStyle = GoogleFonts.poppins(
-  color: AppColors.textPrimary,
-  fontWeight: FontWeight.bold,
-  fontSize: 24,
-  letterSpacing: 0.5,
-);
-
-final TextStyle subtitleStyle = GoogleFonts.poppins(
-  color: AppColors.textSecondary,
-  fontSize: 16,
-  fontWeight: FontWeight.w500,
-);
-
-final TextStyle bodyStyle = GoogleFonts.poppins(
-  color: AppColors.textSecondary,
-  fontSize: 14,
-);
-
 class ChatPage extends StatefulWidget {
   final String receiverUserEmail;
   final String receiverUserID;
@@ -87,7 +57,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _pickImage() async {
     showModalBottomSheet(
       context: context,
-      backgroundColor: surfaceColor,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -97,10 +67,12 @@ class _ChatPageState extends State<ChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: accentColor),
-              title: const Text(
+              leading: const Icon(Icons.photo_library, color: AppColors.accent),
+              title: Text(
                 'Choose from Gallery',
-                style: TextStyle(color: Colors.white),
+                style: GoogleFonts.poppins(
+                    color: AppColors.textPrimary
+                ),
               ),
               onTap: () async {
                 Navigator.pop(context);
@@ -108,10 +80,12 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: accentColor),
-              title: const Text(
+              leading: const Icon(Icons.camera_alt, color: AppColors.accent),
+              title: Text(
                 'Take a Photo',
-                style: TextStyle(color: Colors.white),
+                style: GoogleFonts.poppins(
+                    color: AppColors.textPrimary
+                ),
               ),
               onTap: () async {
                 Navigator.pop(context);
@@ -159,7 +133,7 @@ class _ChatPageState extends State<ChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error picking image: $e'),
-            backgroundColor: errorColor,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -170,7 +144,7 @@ class _ChatPageState extends State<ChatPage> {
     return showDialog<XFile>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: surfaceColor,
+        backgroundColor: AppColors.surface,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -200,9 +174,11 @@ class _ChatPageState extends State<ChatPage> {
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.close, color: Colors.white),
-                    label: const Text(
+                    label: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.white),
+                      style: GoogleFonts.poppins(
+                          color: AppColors.textPrimary
+                      ),
                     ),
                   ),
                   TextButton.icon(
@@ -211,10 +187,10 @@ class _ChatPageState extends State<ChatPage> {
                       // For now, we'll just send the original image
                       Navigator.pop(context, XFile(imagePath));
                     },
-                    icon: const Icon(Icons.check, color: accentColor),
-                    label: const Text(
+                    icon: const Icon(Icons.check, color: AppColors.accent),
+                    label: Text(
                       'Send',
-                      style: TextStyle(color: accentColor),
+                      style: GoogleFonts.poppins(color: AppColors.accent),
                     ),
                   ),
                 ],
@@ -283,11 +259,11 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: textPrimary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         elevation: 0,
-        backgroundColor: surfaceColor,
+        backgroundColor: AppColors.surface,
         title: Row(
           children: [
             CircleAvatar(
@@ -295,11 +271,11 @@ class _ChatPageState extends State<ChatPage> {
               backgroundImage: _receiverProfilePic != null
                   ? NetworkImage(_receiverProfilePic!)
                   : null,
-              backgroundColor: accentColor.withOpacity(0.1),
+              backgroundColor: AppColors.accent.withOpacity(0.1),
               child: _receiverProfilePic == null
                   ? const Icon(
                       Icons.person_rounded,
-                      color: accentColor,
+                      color: AppColors.accent,
                       size: 24,
                     )
                   : null,
@@ -311,7 +287,11 @@ class _ChatPageState extends State<ChatPage> {
                 children: [
                   Text(
                     widget.receiverUserEmail,
-                    style: subtitleStyle.copyWith(color: textPrimary),
+                    style: GoogleFonts.poppins(
+                      color: AppColors.textPrimary,
+                      fontSize: 14, // optional
+                      fontWeight: FontWeight.w500, // optional
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -323,7 +303,7 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           Expanded(child: _buildMessageList()),
-          const Divider(height: 1, color: dividerColor),
+          const Divider(height: 1, color: AppColors.divider),
           _buildMessageInput(),
           SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
         ],
@@ -343,24 +323,32 @@ class _ChatPageState extends State<ChatPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: errorColor.withOpacity(0.1),
+                    color: AppColors.error.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.error_outline_rounded,
                     size: 64,
-                    color: errorColor,
+                    color: AppColors.error,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Error loading messages',
-                  style: subtitleStyle,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textSecondary,
+                    fontSize: 14, // optional
+                    fontWeight: FontWeight.w500, // optional
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Please try again later',
-                  style: bodyStyle,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textSecondary,
+                    fontSize: 14, // optional
+                    fontWeight: FontWeight.w500, // optional
+                  ),
                 ),
               ],
             ),
@@ -370,7 +358,7 @@ class _ChatPageState extends State<ChatPage> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              color: accentColor,
+              color: AppColors.accent,
               strokeWidth: 3,
             ),
           );
@@ -384,29 +372,31 @@ class _ChatPageState extends State<ChatPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
+                    color: AppColors.accent.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.message_outlined,
                     size: 64,
-                    color: accentColor,
+                    color: AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'No messages yet',
-                  style: subtitleStyle,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textSecondary
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Start the conversation!',
-                  style: bodyStyle,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
+                  style: GoogleFonts.poppins(
+        color: AppColors.textSecondary
+        ),
+        ),
+        ],
+            ),);
         }
 
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -444,7 +434,7 @@ class _ChatPageState extends State<ChatPage> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isCurrentUser ? accentColor : surfaceColor,
+                color: isCurrentUser ? AppColors.accent : AppColors.accent.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16).copyWith(
                   bottomLeft: Radius.circular(isCurrentUser ? 16 : 0),
                   bottomRight: Radius.circular(isCurrentUser ? 0 : 16),
@@ -490,7 +480,7 @@ class _ChatPageState extends State<ChatPage> {
                                   right: 8,
                                   child: IconButton(
                                     icon: const Icon(Icons.close,
-                                        color: Colors.white),
+                                        color: Colors.black),
                                     onPressed: () => Navigator.pop(context),
                                   ),
                                 ),
@@ -544,7 +534,7 @@ class _ChatPageState extends State<ChatPage> {
   void _showMessageOptions(DocumentSnapshot document) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: surfaceColor,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -554,10 +544,10 @@ class _ChatPageState extends State<ChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit, color: accentColor),
-              title: const Text(
+              leading: const Icon(Icons.edit, color: AppColors.accent),
+              title: Text(
                 'Edit Message',
-                style: TextStyle(color: Colors.white),
+                style: GoogleFonts.poppins(color: AppColors.textPrimary),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -565,10 +555,10 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete, color: errorColor),
-              title: const Text(
+              leading: const Icon(Icons.delete, color: AppColors.error),
+              title: Text(
                 'Delete Message',
-                style: TextStyle(color: Colors.white),
+                style: GoogleFonts.poppins(color: AppColors.textPrimary),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -590,33 +580,33 @@ class _ChatPageState extends State<ChatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: surfaceColor,
-        title: const Text(
+        backgroundColor: AppColors.surface,
+        title: Text(
           'Edit Message',
-          style: TextStyle(color: Colors.white),
+          style: GoogleFonts.poppins(color: AppColors.textPrimary),
         ),
         content: TextField(
           controller: editController,
-          style: const TextStyle(color: Colors.white),
+          style: GoogleFonts.poppins(color: AppColors.primary),
           decoration: InputDecoration(
             hintText: 'Edit your message...',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+            hintStyle: GoogleFonts.poppins(color: AppColors.textHint),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: accentColor),
+              borderSide: BorderSide(color: AppColors.accent),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: accentColor),
+              borderSide: BorderSide(color: AppColors.accent),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.poppins(color: AppColors.textPrimary),
             ),
           ),
           TextButton(
@@ -626,9 +616,9 @@ class _ChatPageState extends State<ChatPage> {
                 Navigator.pop(context);
               }
             },
-            child: const Text(
+            child: Text(
               'Save',
-              style: TextStyle(color: accentColor),
+              style: GoogleFonts.poppins(color: AppColors.accent),
             ),
           ),
         ],
@@ -640,21 +630,21 @@ class _ChatPageState extends State<ChatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: surfaceColor,
-        title: const Text(
+        backgroundColor: AppColors.surface,
+        title: Text(
           'Delete Message',
-          style: TextStyle(color: Colors.white),
+          style: GoogleFonts.poppins(color: AppColors.textPrimary),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to delete this message?',
-          style: TextStyle(color: Colors.white),
+          style: GoogleFonts.poppins(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.poppins(color: AppColors.textPrimary) ,
             ),
           ),
           TextButton(
@@ -662,9 +652,9 @@ class _ChatPageState extends State<ChatPage> {
               _db.deleteMessage(document.id);
               Navigator.pop(context);
             },
-            child: const Text(
+            child: Text(
               'Delete',
-              style: TextStyle(color: errorColor),
+              style: GoogleFonts.poppins(color: AppColors.error),
             ),
           ),
         ],
@@ -692,7 +682,7 @@ class _ChatPageState extends State<ChatPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: surfaceColor,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -704,29 +694,29 @@ class _ChatPageState extends State<ChatPage> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.photo, color: accentColor),
+            icon: const Icon(Icons.photo, color: AppColors.accent),
             onPressed: _pickImage,
           ),
           IconButton(
             icon: Icon(
               _isRecording ? Icons.stop : Icons.mic,
-              color: _isRecording ? errorColor : accentColor,
+              color: _isRecording ? AppColors.error : AppColors.accent,
             ),
             onPressed: _isRecording ? _stopRecording : _startRecording,
           ),
           Expanded(
             child: TextField(
               controller: _messageController,
-              style: const TextStyle(color: Colors.white),
+              style: GoogleFonts.poppins(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Type a message...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: GoogleFonts.poppins(color: AppColors.textHint),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: secondaryColor,
+                fillColor: AppColors.accent,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
@@ -735,7 +725,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.send, color: accentColor),
+            icon: const Icon(Icons.send, color: AppColors.accent),
             onPressed: () {
               if (_messageController.text.isNotEmpty) {
                 _db.sendMessage(

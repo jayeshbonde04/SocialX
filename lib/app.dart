@@ -10,7 +10,6 @@ import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/profile/data/firebase_profile_repo.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import 'package:socialx/storage/data/firebase_storage_repo.dart';
-import 'package:socialx/themes/light_mode.dart';
 import 'package:socialx/features/notifications/data/firebase_notification_repo.dart';
 import 'package:socialx/features/notifications/presentation/cubits/notification_cubit.dart';
 import 'package:socialx/features/notifications/presentation/pages/notifications_page.dart';
@@ -60,7 +59,6 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         navigatorKey: inAppNotificationService.navigatorKey,
-        theme: lightMode,
         initialRoute: '/',
         routes: {
           '/': (context) => BlocConsumer<AuthCubit, AuthState>(
