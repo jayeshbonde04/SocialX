@@ -13,4 +13,5 @@ abstract class AuthRepo {
   Future<void> deleteAccount(String currentPassword);
   Future<void> updateEmail(String newEmail, String currentPassword);
   Future<void> forgotPassword(String email);
+  Future<AppUsers?> getUserById(String uid);
 }

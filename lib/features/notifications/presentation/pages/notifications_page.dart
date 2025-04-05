@@ -26,7 +26,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   String _getNotificationMessage(app_notification.Notification notification) {
-    // Get the actor's name from the notification metadata
     final actorName = notification.metadata?['actorName'] ?? 'Someone';
     
     switch (notification.type) {
@@ -44,32 +43,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   IconData _getNotificationIcon(app_notification.NotificationType type) {
-    print('NotificationsPage: Getting icon for notification type: ${type.toString()}');
-    
-    IconData icon;
     switch (type) {
       case app_notification.NotificationType.like:
-        icon = Icons.favorite_rounded;
-        break;
+        return Icons.favorite_rounded;
       case app_notification.NotificationType.comment:
-        icon = Icons.comment_rounded;
-        break;
+        return Icons.comment_rounded;
       case app_notification.NotificationType.follow:
-        icon = Icons.person_add_rounded;
-        break;
+        return Icons.person_add_rounded;
       case app_notification.NotificationType.message:
-        icon = Icons.message_rounded;
-        break;
+        return Icons.message_rounded;
       case app_notification.NotificationType.post:
-        icon = Icons.post_add_rounded;
-        break;
-      default:
-        print('NotificationsPage: Unknown notification type, using default icon');
-        icon = Icons.notifications_rounded; // Default icon for any unknown type
+        return Icons.post_add_rounded;
     }
-    
-    print('NotificationsPage: Selected icon: $icon');
-    return icon;
   }
 
   Color _getNotificationColor(app_notification.NotificationType type) {
@@ -109,17 +94,37 @@ class _NotificationsPageState extends State<NotificationsPage> {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Notifications',
-              style: GoogleFonts.poppins(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-                letterSpacing: 0.5,
+            Expanded(
+              child: Text(
+                'Notifications',
+                style: GoogleFonts.poppins(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
+            )
           ],
         ),
+        actions: [
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              return IconButton(
+                onPressed: () {
+                  final currentUser = context.read<AuthCubit>().currentuser;
+                  if (currentUser != null) {
+                    context.read<NotificationCubit>().markAllAsRead(currentUser.uid);
+                  }
+                },
+                icon: const Icon(
+                  Icons.done_all_rounded,
+                  color: AppColors.accent,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: BlocBuilder<NotificationCubit, NotificationState>(
         builder: (context, state) {
@@ -180,6 +185,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       .read<NotificationCubit>()
                       .initializeNotifications(currentUser.uid);
                 }
+                return Future.value();
               },
               child: ListView.builder(
                 itemCount: state.notifications.length,
@@ -187,25 +193,71 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   final notification = state.notifications[index];
                   return Dismissible(
                     key: Key(notification.id),
+                    direction: DismissDirection.endToStart,
                     background: Container(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.shade100,
                       alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 16),
+                      padding: const EdgeInsets.only(right: 24),
                       child: const Icon(
                         Icons.delete_rounded,
                         color: Colors.red,
+                        size: 28,
                       ),
                     ),
-                    direction: DismissDirection.endToStart,
-                    onDismissed: (direction) {
-                      context
+                    onDismissed: (direction) async {
+                      final deletedNotification = notification;
+                      // Update UI state immediately
+                      final currentState = context.read<NotificationCubit>().state;
+                      if (currentState is NotificationLoaded) {
+                        final updatedNotifications = List<app_notification.Notification>.from(currentState.notifications)
+                          ..removeWhere((n) => n.id == notification.id);
+                        context.read<NotificationCubit>().emit(NotificationLoaded(updatedNotifications));
+                      }
+                      
+                      // Then delete from repository
+                      await context
                           .read<NotificationCubit>()
                           .deleteNotification(notification.id);
+                          
+                      if (!context.mounted) return;
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(
+                                Icons.delete_outline_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Notification deleted',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade400,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
                     },
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            _getNotificationColor(notification.type).withOpacity(0.1),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _getNotificationColor(notification.type)
+                              .withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
                         child: Icon(
                           _getNotificationIcon(notification.type),
                           color: _getNotificationColor(notification.type),
@@ -215,8 +267,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         _getNotificationMessage(notification),
                         style: GoogleFonts.poppins(
                           color: AppColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontWeight:
+                              notification.isRead ? FontWeight.normal : FontWeight.bold,
                         ),
                       ),
                       subtitle: Text(
@@ -284,4 +336,4 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ),
     );
   }
-} 
+}

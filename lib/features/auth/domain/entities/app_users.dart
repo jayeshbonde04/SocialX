@@ -4,6 +4,7 @@ class AppUsers {
   final String name;
   final List<String> followers;
   final List<String> following;
+  final String profileImageUrl;
 
   AppUsers({
     required this.uid,
@@ -11,6 +12,7 @@ class AppUsers {
     required this.name,
     this.followers = const [],
     this.following = const [],
+    this.profileImageUrl = '',
   });
 
   //convert app user to json
@@ -21,6 +23,7 @@ class AppUsers {
       'name': name,
       'followers': followers,
       'following': following,
+      'profileImageUrl': profileImageUrl,
     };
   }
 
@@ -32,6 +35,7 @@ class AppUsers {
       name: jsonUser['name'],
       followers: List<String>.from(jsonUser['followers'] ?? []),
       following: List<String>.from(jsonUser['following'] ?? []),
+      profileImageUrl: jsonUser['profileImageUrl'] ?? '',
     );
   }
 }

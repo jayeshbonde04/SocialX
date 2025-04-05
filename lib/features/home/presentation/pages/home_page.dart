@@ -158,8 +158,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        elevation: 1,
-        backgroundColor: AppColors.shadow,
+        elevation: 0,
+        backgroundColor: AppColors.surface,
         title: Row(
           children: [
             Container(

@@ -84,11 +84,18 @@ class FirebaseAuthRepo implements AuthRepo {
     try {
       final User? user = _auth.currentUser;
       if (user != null) {
-        return AppUsers(
-          uid: user.uid,
-          email: user.email!,
-          name: user.displayName ?? '',
-        );
+        // Get additional user data from Firestore
+        final userData = await _firestore.collection('users').doc(user.uid).get();
+        if (userData.exists) {
+          return AppUsers(
+            uid: user.uid,
+            email: user.email!,
+            name: userData['name'] ?? user.displayName ?? '',
+            followers: List<String>.from(userData['followers'] ?? []),
+            following: List<String>.from(userData['following'] ?? []),
+            profileImageUrl: userData['profileImageUrl'] ?? '',
+          );
+        }
       }
       return null;
     } catch (e) {
@@ -153,6 +160,26 @@ class FirebaseAuthRepo implements AuthRepo {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
       throw Exception('Failed to send password reset email: $e');
+    }
+  }
+
+  @override
+  Future<AppUsers?> getUserById(String uid) async {
+    try {
+      final userData = await _firestore.collection('users').doc(uid).get();
+      if (userData.exists) {
+        return AppUsers(
+          uid: uid,
+          email: userData['email'] ?? '',
+          name: userData['name'] ?? '',
+          followers: List<String>.from(userData['followers'] ?? []),
+          following: List<String>.from(userData['following'] ?? []),
+          profileImageUrl: userData['profileImageUrl'] ?? '',
+        );
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Failed to get user by ID: $e');
     }
   }
 }

@@ -7,4 +7,5 @@ abstract class NotificationRepo {
   Stream<List<Notification>> getNotifications(String userId);
   Future<void> deleteNotification(String notificationId);
   Future<void> deleteAllNotifications(String userId);
-} 
+  Future<void> restoreNotification(Notification notification);
+}

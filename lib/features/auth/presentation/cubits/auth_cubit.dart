@@ -99,6 +99,16 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  // Get user by ID
+  Future<AppUsers?> getUserById(String uid) async {
+    try {
+      return await authRepo.getUserById(uid);
+    } catch (e) {
+      emit(AuthErrors(e.toString()));
+      return null;
+    }
+  }
+
   // Forgot password
   Future<void> forgotPassword(String email) async {
     try {

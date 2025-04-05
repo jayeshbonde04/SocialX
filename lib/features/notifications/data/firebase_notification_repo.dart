@@ -100,12 +100,12 @@ class FirebaseNotificationRepo implements NotificationRepo {
   @override
   Future<void> deleteAllNotifications(String userId) async {
     try {
-      final batch = _firestore.batch();
       final notifications = await _firestore
           .collection('notifications')
           .where('userId', isEqualTo: userId)
           .get();
 
+      final batch = _firestore.batch();
       for (var doc in notifications.docs) {
         batch.delete(doc.reference);
       }
@@ -113,6 +113,22 @@ class FirebaseNotificationRepo implements NotificationRepo {
       await batch.commit();
     } catch (e) {
       print('Error deleting all notifications: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> restoreNotification(Notification notification) async {
+    try {
+      print('FirebaseNotificationRepo: Restoring notification: ${notification.id}');
+      final notificationData = notification.toJson();
+      await _firestore
+          .collection('notifications')
+          .doc(notification.id)
+          .set(notificationData);
+      print('FirebaseNotificationRepo: Notification restored successfully');
+    } catch (e) {
+      print('FirebaseNotificationRepo: Error restoring notification: $e');
       rethrow;
     }
   }
@@ -131,4 +147,4 @@ class FirebaseNotificationRepo implements NotificationRepo {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
-} 
+}

@@ -12,6 +12,7 @@ import 'package:socialx/features/profile/presentation/components/bio_box.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_states.dart';
 import 'package:socialx/features/profile/presentation/pages/edit_profile_page.dart';
+import 'package:socialx/features/profile/presentation/pages/followers_following_page.dart';
 import 'package:socialx/themes/app_colors.dart';
 
 // Text styles
@@ -209,13 +210,35 @@ class _ProfilePageState extends State<ProfilePage> {
                               },
                             ),
                           ),
-                          _buildStatColumn(
-                            'Followers',
-                            _buildStatValue(user.followers.length.toString()),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FollowersFollowingPage(
+                                  uid: user.uid,
+                                  isFollowers: true,
+                                ),
+                              ),
+                            ),
+                            child: _buildStatColumn(
+                              'Followers',
+                              _buildStatValue(user.followers.length.toString()),
+                            ),
                           ),
-                          _buildStatColumn(
-                            'Following',
-                            _buildStatValue(user.following.length.toString()),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FollowersFollowingPage(
+                                  uid: user.uid,
+                                  isFollowers: false,
+                                ),
+                              ),
+                            ),
+                            child: _buildStatColumn(
+                              'Following',
+                              _buildStatValue(user.following.length.toString()),
+                            ),
                           ),
                         ],
                       ),
