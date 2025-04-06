@@ -281,23 +281,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.cyan.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.edit_rounded,
-                color: Colors.cyan,
-                size: 24,
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(8),
+            //   decoration: BoxDecoration(
+            //     color: Colors.cyan.withOpacity(0.1),
+            //     borderRadius: BorderRadius.circular(12),
+            //   ),
+            //   child: const Icon(
+            //     Icons.edit_rounded,
+            //     color: Colors.cyan,
+            //     size: 24,
+            //   ),
+            // ),
             const SizedBox(width: 12),
-            Text(
-              'Edit Profile',
-              style: titleStyle.copyWith(
-                color: Colors.black,
+            Expanded(
+              child: Text(
+                'Edit Profile',
+                style: titleStyle.copyWith(
+                  color: Colors.black,
+                ),
               ),
             ),
           ],
@@ -489,7 +491,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         color: AppColors.textPrimary,
                         fontSize: 16,
                       ),
-                      cursorColor: Colors.cyan,
                       decoration: InputDecoration(
                         hintStyle: bodyStyle.copyWith(
                           color: AppColors.textSecondary.withOpacity(0.5),
@@ -553,7 +554,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         color: AppColors.textPrimary,
                         fontSize: 16,
                       ),
-                      cursorColor: Colors.cyan,
                       decoration: InputDecoration(
                         hintStyle: bodyStyle.copyWith(
                           color: AppColors.textSecondary.withOpacity(0.5),
@@ -618,7 +618,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         color: AppColors.textPrimary,
                         fontSize: 16,
                       ),
-                      cursorColor: Colors.cyan,
                       decoration: InputDecoration(
                         hintStyle: bodyStyle.copyWith(
                           color: AppColors.textSecondary.withOpacity(0.5),
@@ -664,26 +663,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Private Account',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Private Account',
+                          style: GoogleFonts.poppins(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Only approved followers can see your posts',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Only approved followers can see your posts',
+                          style: GoogleFonts.poppins(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   Switch(
                     value: widget.user.isPrivate,

@@ -12,7 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:audio_waveforms/audio_waveforms.dart';
-import 'package:permission_handler/permission_handler.dart';
+
 import 'package:http/http.dart' as http;
 import 'dart:math';
 
@@ -34,15 +34,11 @@ class _ChatPageState extends State<ChatPage> {
   final DatabaseService _db = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ScrollController _scrollController = ScrollController();
-  final audio_player.AudioPlayer _audioPlayer = audio_player.AudioPlayer();
   final AudioRecorder _audioRecorder = AudioRecorder();
   String? _recordingFilePath;
   bool _isRecording = false;
   String? _receiverProfilePic;
   late final RecorderController _recorderController;
-  bool _isPlaying = false;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
 
   @override
   void initState() {
@@ -364,25 +360,6 @@ class _ChatPageState extends State<ChatPage> {
     return 0;
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() {
-        _isPlaying = state == audio_player.PlayerState.playing;
-      });
-    });
-
-    _audioPlayer.onPositionChanged.listen((position) {
-      setState(() {
-        _position = position;
-      });
-    });
-
-    _audioPlayer.onDurationChanged.listen((duration) {
-      setState(() {
-        _duration = duration;
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -412,7 +389,7 @@ class _ChatPageState extends State<ChatPage> {
                     : null,
                 backgroundColor: AppColors.primary.withOpacity(0.1),
                 child: _receiverProfilePic == null
-                    ? Icon(
+                    ? const Icon(
                         Icons.person_rounded,
                         color: AppColors.primary,
                         size: 24,
@@ -433,13 +410,6 @@ class _ChatPageState extends State<ChatPage> {
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'Online',
-                    style: GoogleFonts.poppins(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
                   ),
                 ],
               ),
@@ -594,7 +564,7 @@ class _ChatPageState extends State<ChatPage> {
                         Text(
                           message.message,
                           style: GoogleFonts.poppins(
-                            color: isCurrentUser ? Colors.white : AppColors.textPrimary,
+                            color: isCurrentUser ? AppColors.third : AppColors.textPrimary,
                             fontSize: 14,
                           ),
                         )
@@ -1246,9 +1216,9 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                     }
                   },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           Container(
-            width: 120,
+            width: 110,
             height: 40,
             decoration: BoxDecoration(
               color: widget.isCurrentUser 
@@ -1283,14 +1253,16 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                     ),
                   ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            _isPlaying 
-                ? _formatDuration(_position)
-                : _formatDuration(_duration),
-            style: GoogleFonts.poppins(
-              color: widget.isCurrentUser ? Colors.white : AppColors.textPrimary,
-              fontSize: 12,
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _isPlaying
+                  ? _formatDuration(_position)
+                  : _formatDuration(_duration),
+              style: GoogleFonts.poppins(
+                color: widget.isCurrentUser ? Colors.white : AppColors.textPrimary,
+                fontSize: 12,
+              ),
             ),
           ),
         ],

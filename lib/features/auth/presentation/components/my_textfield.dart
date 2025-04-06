@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:socialx/themes/app_colors.dart';
 
 class MyTextfield extends StatefulWidget {
   final TextEditingController controller;
@@ -8,6 +9,7 @@ class MyTextfield extends StatefulWidget {
   final InputDecoration? decoration;
   final int? maxLines;
   final Color? cursorColor;
+  final Color? fillColors;
   const MyTextfield({
     super.key,
     required this.controller,
@@ -17,6 +19,7 @@ class MyTextfield extends StatefulWidget {
     this.decoration,
     this.maxLines,
     this.cursorColor,
+    this.fillColors,
   });
 
   @override
@@ -52,7 +55,7 @@ class _MyTextfieldState extends State<MyTextfield> {
         color: Color(0xFFB3B3B3),
         fontSize: 14,
       ),
-      fillColor: Theme.of(context).colorScheme.secondary,
+      fillColor: AppColors.third,
       filled: true,
     );
 
