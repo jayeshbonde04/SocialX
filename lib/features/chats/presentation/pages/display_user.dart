@@ -48,31 +48,21 @@ class _DisplayUserState extends State<DisplayUser> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: textPrimary),
         elevation: 0,
-        backgroundColor: surfaceColor,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.message_rounded,
-                color: accentColor,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Messages',
-              style: titleStyle,
-            ),
-          ],
+        backgroundColor: AppColors.background,
+        title: Text(
+          'Messages',
+          style: GoogleFonts.poppins(
+            color: AppColors.textPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: _buildUserList(),
@@ -83,84 +73,77 @@ class _DisplayUserState extends State<DisplayUser> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _db.getUserStream(),
       builder: (context, snapshot) {
-        // Error case
         if (snapshot.hasError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: errorColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.error_outline_rounded,
-                    size: 64,
-                    color: errorColor,
-                  ),
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 64,
+                  color: AppColors.error,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Error loading users',
-                  style: subtitleStyle,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Please try again later',
-                  style: bodyStyle,
+                  'Error loading messages',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
           );
         }
 
-        // Loading state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
-              color: accentColor,
-              strokeWidth: 3,
+              color: AppColors.primary,
             ),
           );
         }
 
-        // Check if data exists
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.people_outline_rounded,
+                  child: Icon(
+                    Icons.message_rounded,
                     size: 64,
-                    color: accentColor,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'No users found',
-                  style: subtitleStyle,
+                  'No messages yet',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Start following people to message them',
-                  style: bodyStyle,
-                  textAlign: TextAlign.center,
+                  'Start connecting with people!',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
           );
         }
 
-        // Return list
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: snapshot.data!.length,
@@ -173,53 +156,71 @@ class _DisplayUserState extends State<DisplayUser> {
     );
   }
 
-  Widget _buildUserListItem(
-      Map<String, dynamic> userData, BuildContext context) {
+  Widget _buildUserListItem(Map<String, dynamic> userData, BuildContext context) {
     String currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
 
     if (userData['name'] != null && userData['name'] != currentUserEmail) {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
+              color: AppColors.shadow.withOpacity(0.1),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: ListTile(
           contentPadding: const EdgeInsets.all(12),
-          leading: CircleAvatar(
-            radius: 24,
-            backgroundImage: userData['profileImageUrl'] != null &&
-                    userData['profileImageUrl'].isNotEmpty
-                ? NetworkImage(userData['profileImageUrl'])
-                : null,
-            backgroundColor: accentColor.withOpacity(0.1),
-            child: userData['profileImageUrl'] == null ||
-                    userData['profileImageUrl'].isEmpty
-                ? const Icon(
-                    Icons.person_rounded,
-                    color: accentColor,
-                    size: 24,
-                  )
-                : null,
+          leading: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.2),
+                width: 2,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundImage: userData['profileImageUrl'] != null &&
+                      userData['profileImageUrl'].isNotEmpty
+                  ? NetworkImage(userData['profileImageUrl'])
+                  : null,
+              child: userData['profileImageUrl'] == null ||
+                      userData['profileImageUrl'].isEmpty
+                  ? Icon(
+                      Icons.person_rounded,
+                      color: AppColors.primary,
+                      size: 24,
+                    )
+                  : null,
+            ),
           ),
           title: Text(
             userData['name'] ?? '',
-            style: subtitleStyle,
+            style: GoogleFonts.poppins(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          trailing: const Icon(
+          subtitle: Text(
+            'Tap to start chatting',
+            style: GoogleFonts.poppins(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          trailing: Icon(
             Icons.arrow_forward_ios_rounded,
-            color: textSecondary,
+            color: AppColors.primary,
             size: 16,
           ),
           onTap: () {
-            print("Tapped on user: ${userData['name']}");
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -233,7 +234,7 @@ class _DisplayUserState extends State<DisplayUser> {
         ),
       );
     } else {
-      return Container(); // Hide current user
+      return Container();
     }
   }
 }

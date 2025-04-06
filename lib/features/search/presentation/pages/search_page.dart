@@ -3,42 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
-
-// Reuse the same color scheme from home_page.dart
-const Color primaryColor = Color(0xFF1A1A1A);
-const Color secondaryColor = Color(0xFF2D2D2D);
-const Color accentColor = Color(0xFF6C63FF);
-const Color backgroundColor = Color(0xFF121212);
-const Color surfaceColor = Color(0xFF1E1E1E);
-const Color textPrimary = Color(0xFFFFFFFF);
-const Color textSecondary = Color(0xFFB3B3B3);
-const Color dividerColor = Color(0xFF2D2D2D);
-const Color errorColor = Color(0xFFFF4B4B);
-
-// Text styles
-final TextStyle titleStyle = GoogleFonts.poppins(
-  color: textPrimary,
-  fontWeight: FontWeight.bold,
-  fontSize: 24,
-  letterSpacing: 0.5,
-);
-
-final TextStyle subtitleStyle = GoogleFonts.poppins(
-  color: textSecondary,
-  fontSize: 16,
-  fontWeight: FontWeight.w500,
-);
-
-final TextStyle bodyStyle = GoogleFonts.poppins(
-  color: textSecondary,
-  fontSize: 14,
-);
-
-final TextStyle buttonStyle = GoogleFonts.poppins(
-  color: accentColor,
-  fontSize: 12,
-  fontWeight: FontWeight.w600,
-);
+import 'package:socialx/themes/app_colors.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -75,65 +40,47 @@ class _SearchPageState extends State<SearchPage> {
 
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        print('No current user found');
-        return;
-      }
+      if (currentUser == null) return;
 
       final usersRef = FirebaseFirestore.instance.collection('users');
-      
-      // Convert search query to lowercase for case-insensitive search
       final lowercaseQuery = query.toLowerCase();
-      print('Searching for query: $lowercaseQuery');
-      
-      // Get all users first
       final allUsersSnapshot = await usersRef.get();
-      print('Total users in database: ${allUsersSnapshot.docs.length}');
-      
-      // Filter users based on username or name
       final List<Map<String, dynamic>> results = [];
       
       for (var doc in allUsersSnapshot.docs) {
-        if (doc.id == currentUser.uid) continue; // Skip current user
+        if (doc.id == currentUser.uid) continue;
         
         final userData = doc.data();
         final username = userData['username']?.toString().toLowerCase() ?? '';
         final name = userData['name']?.toString().toLowerCase() ?? '';
-        
-        print('Checking user: $username (${userData['name']})');
         
         if (username.contains(lowercaseQuery) || name.contains(lowercaseQuery)) {
           results.add({
             'uid': doc.id,
             'username': userData['username'] ?? '',
             'name': userData['name'] ?? '',
-            'profilePic': userData['profilePic'] ?? '',
+            'profilePic': userData['profileImageUrl'] ?? '',
+            'bio': userData['bio'] ?? '',
           });
         }
       }
-
-      print('Found ${results.length} matching users');
       
-      // Sort results to prioritize exact matches
       results.sort((a, b) {
         final aUsername = a['username'].toString().toLowerCase();
         final bUsername = b['username'].toString().toLowerCase();
         final aName = a['name'].toString().toLowerCase();
         final bName = b['name'].toString().toLowerCase();
         
-        // Check for exact matches first
         if (aUsername == lowercaseQuery) return -1;
         if (bUsername == lowercaseQuery) return 1;
         if (aName == lowercaseQuery) return -1;
         if (bName == lowercaseQuery) return 1;
         
-        // Then check for starts with matches
         if (aUsername.startsWith(lowercaseQuery)) return -1;
         if (bUsername.startsWith(lowercaseQuery)) return 1;
         if (aName.startsWith(lowercaseQuery)) return -1;
         if (bName.startsWith(lowercaseQuery)) return 1;
         
-        // Finally, sort alphabetically
         return aUsername.compareTo(bUsername);
       });
 
@@ -142,98 +89,102 @@ class _SearchPageState extends State<SearchPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Search error: $e'); // Debug print
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error searching users: ${e.toString()}',
-            style: bodyStyle,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error searching users: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
           ),
-          backgroundColor: errorColor,
-        ),
-      );
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: textPrimary),
         elevation: 0,
-        backgroundColor: surfaceColor,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.search_rounded,
-                color: accentColor,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Search Users',
-              style: titleStyle,
-            ),
-          ],
+        backgroundColor: AppColors.background,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Search Users',
+          style: GoogleFonts.poppins(
+            color: AppColors.textPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          Container(
+            padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
-              style: bodyStyle,
+              style: GoogleFonts.poppins(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+              ),
               decoration: InputDecoration(
-                hintText: 'Search by username or name...',
-                hintStyle: bodyStyle.copyWith(
-                  color: textSecondary.withOpacity(0.5),
+                hintText: 'Search by name or username...',
+                hintStyle: GoogleFonts.poppins(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
                 ),
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: textSecondary,
+                  color: AppColors.primary,
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear_rounded,
-                          color: textSecondary,
+                          color: AppColors.primary,
                         ),
                         onPressed: () {
                           _searchController.clear();
-                          _searchQuery = '';
-                          _searchResults = [];
+                          setState(() {
+                            _searchQuery = '';
+                            _searchResults = [];
+                          });
                         },
                       )
                     : null,
                 filled: true,
-                fillColor: secondaryColor,
+                fillColor: AppColors.surface,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withOpacity(0.2),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withOpacity(0.2),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: accentColor),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 20,
+                  vertical: 16,
                 ),
               ),
               onChanged: (value) {
@@ -246,10 +197,9 @@ class _SearchPageState extends State<SearchPage> {
           ),
           Expanded(
             child: _isLoading
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(
-                      color: accentColor,
-                      strokeWidth: 3,
+                      color: AppColors.primary,
                     ),
                   )
                 : _searchResults.isEmpty && _searchQuery.isNotEmpty
@@ -258,26 +208,33 @@ class _SearchPageState extends State<SearchPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: accentColor.withOpacity(0.1),
+                                color: AppColors.primary.withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.search_off_rounded,
                                 size: 64,
-                                color: accentColor,
+                                color: AppColors.primary,
                               ),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'No users found',
-                              style: subtitleStyle,
+                              style: GoogleFonts.poppins(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Try a different search term',
-                              style: bodyStyle,
+                              style: GoogleFonts.poppins(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ),
@@ -290,43 +247,84 @@ class _SearchPageState extends State<SearchPage> {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: surfaceColor,
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
+                                  color: AppColors.shadow.withOpacity(0.1),
+                                  blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(12),
-                              leading: CircleAvatar(
-                                radius: 24,
-                                backgroundImage: user['profilePic'] != null &&
-                                        user['profilePic'].isNotEmpty
-                                    ? NetworkImage(user['profilePic'])
-                                    : null,
-                                child: user['profilePic'] == null ||
-                                        user['profilePic'].isEmpty
-                                    ? const Icon(
-                                        Icons.person_rounded,
-                                        color: textSecondary,
-                                        size: 24,
-                                      )
-                                    : null,
+                              leading: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primary.withOpacity(0.2),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                                  backgroundImage: user['profilePic'] != null &&
+                                          user['profilePic'].isNotEmpty
+                                      ? NetworkImage(user['profilePic'])
+                                      : null,
+                                  child: user['profilePic'] == null ||
+                                          user['profilePic'].isEmpty
+                                      ? Icon(
+                                          Icons.person_rounded,
+                                          color: AppColors.primary,
+                                          size: 24,
+                                        )
+                                      : null,
+                                ),
                               ),
                               title: Text(
                                 user['name'] ?? '',
-                                style: subtitleStyle,
+                                style: GoogleFonts.poppins(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (user['username'] != null && user['username'].isNotEmpty)
+                                    Text(
+                                      '@${user['username']}',
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.primary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  if (user['bio'] != null && user['bio'].isNotEmpty)
+                                    Text(
+                                      user['bio'],
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                              trailing: Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: AppColors.primary,
+                                size: 16,
                               ),
                               onTap: () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        ProfilePage(uid: user['uid']),
+                                    builder: (context) => ProfilePage(uid: user['uid']),
                                   ),
                                 );
                               },

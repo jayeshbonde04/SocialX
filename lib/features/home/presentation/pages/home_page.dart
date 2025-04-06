@@ -15,9 +15,6 @@ import 'package:socialx/features/search/presentation/pages/search_page.dart';
 import 'package:socialx/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:socialx/features/notifications/presentation/cubits/notification_cubit.dart';
 import 'package:socialx/features/notifications/presentation/cubits/notification_states.dart';
-import 'package:socialx/features/auth/domain/entities/app_users.dart';
-import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
-import 'package:socialx/features/chats/presentation/pages/chat_page.dart';
 import 'package:socialx/themes/app_colors.dart';
 
 /*
@@ -256,7 +253,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.message_rounded, color: Colors.blue),
+            icon: const Icon(Icons.message_rounded, color: Colors.cyan),
             onPressed: () {
               Navigator.push(
                 context,

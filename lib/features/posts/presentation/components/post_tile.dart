@@ -42,6 +42,7 @@ class _PostTileState extends State<PostTile> {
 
   bool isOwnPost = false;
   bool isFollowing = false;
+  bool isCommentsExpanded = false; // Track if comments are expanded
 
   //current user
   AppUsers? currentUser;
@@ -129,6 +130,93 @@ class _PostTileState extends State<PostTile> {
     });
   }
 
+  // Show users who liked the post
+  void showLikesDialog() {
+    if (widget.post.likes.isEmpty) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Likes',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.6,
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: widget.post.likes.length,
+            itemBuilder: (context, index) {
+              final userId = widget.post.likes[index];
+              return FutureBuilder<ProfileUser?>(
+                future: profileCubit.getUserProfile(userId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data == null) {
+                    return const SizedBox.shrink();
+                  }
+                  
+                  final user = snapshot.data!;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: user.profileImageUrl.isNotEmpty
+                          ? NetworkImage(user.profileImageUrl)
+                          : null,
+                      child: user.profileImageUrl.isEmpty
+                          ? Icon(Icons.person, color: AppColors.primary)
+                          : null,
+                    ),
+                    title: Text(
+                      user.name,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfilePage(uid: user.uid),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /*
   * Comments
   * */
@@ -141,35 +229,58 @@ class _PostTileState extends State<PostTile> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: surfaceColor,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text(
+        title: Text(
           "Add a Comment",
           style: TextStyle(
-            color: textPrimary,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Container(
           decoration: BoxDecoration(
-            color: backgroundColor,
+            color: AppColors.card,
             borderRadius: BorderRadius.circular(12),
           ),
           child: MyTextfield(
             controller: commentTextController,
             hintText: "Write a comment...",
             obscuretext: false,
-            style: bodyStyle.copyWith(color: textPrimary),
-            cursorColor: textPrimary,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+            ),
+            cursorColor: AppColors.accent,
             decoration: InputDecoration(
-              hintStyle: bodyStyle.copyWith(
-                color: textSecondary.withOpacity(0.5),
+              hintStyle: TextStyle(
+                color: AppColors.textSecondary.withOpacity(0.5),
+                fontSize: 16,
               ),
+              filled: true,
+              fillColor: AppColors.card,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide(
+                  color: AppColors.accent.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: AppColors.accent.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: AppColors.accent,
+                  width: 2,
+                ),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -181,9 +292,12 @@ class _PostTileState extends State<PostTile> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
+            child: Text(
               "Cancel",
-              style: TextStyle(color: textSecondary),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           TextButton(
@@ -191,11 +305,12 @@ class _PostTileState extends State<PostTile> {
               addComment();
               Navigator.of(context).pop();
             },
-            child: const Text(
+            child: Text(
               "Post",
               style: TextStyle(
-                color: accentColor,
+                color: AppColors.accent,
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
           ),
@@ -302,6 +417,60 @@ class _PostTileState extends State<PostTile> {
         );
       }
     }
+  }
+
+  // Show post image in full screen
+  void _showFullScreenImage() {
+    if (widget.post.imageUrl.isEmpty) return;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              postUser?.name ?? 'User',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          body: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: CachedNetworkImage(
+                  imageUrl: widget.post.imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Center(
+                    child: Icon(
+                      Icons.error_outline,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Toggle comments expansion
+  void toggleCommentsExpansion() {
+    setState(() {
+      isCommentsExpanded = !isCommentsExpanded;
+    });
   }
 
   @override
@@ -468,29 +637,32 @@ class _PostTileState extends State<PostTile> {
           const SizedBox(height: 12),
           // Post Image
           if (widget.post.imageUrl.isNotEmpty)
-            Container(
-              width: double.infinity,
-              height: 300,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: widget.post.imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: AppColors.accentWithOpacity(0.1),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.accent,
+            GestureDetector(
+              onTap: _showFullScreenImage,
+              child: Container(
+                width: double.infinity,
+                height: 300,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.post.imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: AppColors.accentWithOpacity(0.1),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.accent,
+                        ),
                       ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppColors.accentWithOpacity(0.1),
-                    child: Icon(
-                      Icons.error_outline,
-                      color: AppColors.error,
-                      size: 40,
+                    errorWidget: (context, url, error) => Container(
+                      color: AppColors.accentWithOpacity(0.1),
+                      child: Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 40,
+                      ),
                     ),
                   ),
                 ),
@@ -533,31 +705,58 @@ class _PostTileState extends State<PostTile> {
           ),
           // Comments Section
           if (widget.post.comment.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Comments',
-                    style: TextStyle(
-                      color: AppColors.textSecondaryWithOpacity(0.7),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+            GestureDetector(
+              onTap: toggleCommentsExpansion,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
                   ),
-                  const SizedBox(height: 8),
-                  ...widget.post.comment.map((comment) => CommentTile(
-                        comment: comment,
-                      )),
-                ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Comments (${widget.post.comment.length})',
+                          style: TextStyle(
+                            color: AppColors.textSecondaryWithOpacity(0.7),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Icon(
+                          isCommentsExpanded ? Icons.expand_less : Icons.expand_more,
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (isCommentsExpanded)
+                      Container(
+                        constraints: BoxConstraints(
+                          maxHeight: 300, // Increased height for expanded view
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: widget.post.comment.map((comment) => CommentTile(
+                              comment: comment,
+                            )).toList(),
+                          ),
+                        ),
+                      )
+                    else
+                      // Show only the first comment when collapsed
+                      CommentTile(
+                        comment: widget.post.comment.first,
+                      ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -581,12 +780,16 @@ class _PostTileState extends State<PostTile> {
             size: 24,
           ),
           const SizedBox(width: 4),
-          Text(
-            count.toString(),
-            style: TextStyle(
-              color: color,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+          GestureDetector(
+            onTap: count > 0 ? showLikesDialog : null,
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                decoration: count > 0 ? TextDecoration.underline : null,
+              ),
             ),
           ),
         ],

@@ -1,5 +1,4 @@
 import 'package:socialx/features/posts/domain/entities/post.dart';
-import 'package:socialx/features/posts/domain/entities/comment.dart';
 
 abstract class PostRepo {
   Future<List<Post>> fetchAllPosts();

@@ -174,11 +174,11 @@ class InAppNotificationService {
       case app_notification.NotificationType.like:
         return Colors.red;
       case app_notification.NotificationType.comment:
-        return Colors.blue;
+        return Colors.cyan;
       case app_notification.NotificationType.follow:
         return Colors.green;
       case app_notification.NotificationType.message:
-        return Colors.orange;
+        return Colors.cyan;
       case app_notification.NotificationType.post:
         return Colors.purple;
     }

@@ -3,41 +3,41 @@ import 'package:flutter/material.dart';
 // Unified Theme - Dark + Deep Purple Aesthetic
 class AppColors {
   // Primary Colors
-  static const Color primary = Color(0xFF121212); // Jet black
-  static const Color secondary = Color(0xFF1F1F1F); // Dark gray
-  static const Color accent = Color(0xFF8B5CF6); // Deep Purple
+  static const Color primary = Color(0xFF00BCD4); // Cyan
+  static const Color secondary = Color(0xFF26C6DA); // Light Cyan
+  static const Color accent = Color(0xFF00BCD4); // Cyan
 
   // Background Colors
-  static const Color background = Color(0xFFFFFFFF); // White background for contrast
-  static const Color surface = Color(0xFFF0F0F0); // Light surface for UI elements
-  static const Color card = Color(0xFF2D2D2D); // Dark gray card for depth
+  static const Color background = Color(0xFFFFFFFF); // Pure white
+  static const Color surface = Color(0xFFF5F5F5); // Light gray surface
+  static const Color card = Color(0xFFFFFFFF); // White card
 
   // Text Colors
-  static const Color textPrimary = Color(0xFF000000); // Pure black text
-  static const Color textSecondary = Color(0xFF4F4F4F); // Dark gray text
-  static const Color textHint = Color(0xFFBFA5F9); // Muted lilac hint text
+  static const Color textPrimary = Color(0xFF212121); // Near black
+  static const Color textSecondary = Color(0xFF757575); // Medium gray
+  static const Color textHint = Color(0xFFBDBDBD); // Light gray hint
 
   // Borders and Dividers
-  static const Color border = Color(0xFF3A3A3A); // Graphite gray
-  static const Color divider = Color(0xFFE0E0E0); // Soft light divider
+  static const Color border = Color(0xFFE0E0E0); // Light gray border
+  static const Color divider = Color(0xFFEEEEEE); // Very light gray divider
 
   // Status Colors
-  static const Color success = Color(0xFF32CD32); // Neon green
-  static const Color error = Color(0xFFD32F2F); // Deep red
-  static const Color warning = Color(0xFFEAB308); // Goldenrod
-  static const Color info = Color(0xFF3B82F6); // Blue info
+  static const Color success = Color(0xFF4CAF50); // Material Green
+  static const Color error = Color(0xFFF44336); // Material Red
+  static const Color warning = Color(0xFFFFC107); // Material Amber
+  static const Color info = Color(0xFF00BCD4); // Cyan
 
   // Overlay Colors
-  static const Color overlay = Color(0x99000000); // Transparent black overlay
-  static const Color modalBackground = Color(0xFF121212); // Black modal bg
+  static const Color overlay = Color(0x52000000); // Semi-transparent black
+  static const Color modalBackground = Color(0xFFFFFFFF); // White modal background
 
   // Interactive Colors
-  static const Color buttonPrimary = Color(0xFF8B5CF6); // Deep Purple button
-  static const Color buttonSecondary = Color(0xFF1F1F1F); // Dark secondary button
-  static const Color buttonDisabled = Color(0xFF666666); // Gray disabled button
+  static const Color buttonPrimary = Color(0xFF00BCD4); // Cyan
+  static const Color buttonSecondary = Color(0xFFE0E0E0); // Light gray
+  static const Color buttonDisabled = Color(0xFFBDBDBD); // Medium gray
 
   // Shadows
-  static const Color shadow = Color(0x30000000); // Light shadow
+  static const Color shadow = Color(0x1A000000); // Very light shadow
 
   // Helper Methods
   static Color accentWithOpacity(double opacity) => accent.withOpacity(opacity);

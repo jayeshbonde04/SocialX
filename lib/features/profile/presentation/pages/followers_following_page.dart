@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:socialx/features/auth/domain/entities/app_users.dart';
-import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/profile/domain/entities/profile_user.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
@@ -53,8 +51,8 @@ class FollowersFollowingPage extends StatelessWidget {
             body: ListView.builder(
               itemCount: userIds.length,
               itemBuilder: (context, index) {
-                return FutureBuilder<AppUsers?>(
-                  future: context.read<AuthCubit>().getUserById(userIds[index]),
+                return FutureBuilder<ProfileUser?>(
+                  future: context.read<ProfileCubit>().getUserProfile(userIds[index]),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
@@ -64,7 +62,7 @@ class FollowersFollowingPage extends StatelessWidget {
                       return const SizedBox.shrink();
                     }
 
-                    final AppUsers followerUser = snapshot.data!;
+                    final ProfileUser followerUser = snapshot.data!;
 
                     return ListTile(
                       onTap: () {
@@ -107,29 +105,30 @@ class FollowersFollowingPage extends StatelessWidget {
                               placeholder: (context, url) => Container(
                                 width: 50,
                                 height: 50,
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: AppColors.surface,
+                                  color: Colors.grey,
                                 ),
-                                child: Center(
+                                child: const Center(
                                   child: CircularProgressIndicator(
-                                    color: AppColors.primary,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
-                        errorWidget: (context, url, error) => Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.surface,
-                          ),
-                          child: Icon(
-                            Icons.person_rounded,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
+                              errorWidget: (context, url, error) => Container(
+                                width: 50,
+                                height: 50,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.grey,
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                              ),
+                            ),
                       title: Text(
                         followerUser.name,
                         style: GoogleFonts.poppins(

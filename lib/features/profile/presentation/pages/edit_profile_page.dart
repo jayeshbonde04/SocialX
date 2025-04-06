@@ -11,39 +11,28 @@ import 'package:socialx/features/profile/domain/entities/profile_user.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import 'package:socialx/features/profile/presentation/cubits/profile_states.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
-
-// Reuse the same color scheme
-const Color primaryColor = Color(0xFF1A1A1A);
-const Color secondaryColor = Color(0xFF2D2D2D);
-const Color accentColor = Color(0xFF6C63FF);
-const Color backgroundColor = Color(0xFF121212);
-const Color surfaceColor = Color(0xFF1E1E1E);
-const Color textPrimary = Color(0xFFFFFFFF);
-const Color textSecondary = Color(0xFFB3B3B3);
-const Color dividerColor = Color(0xFF2D2D2D);
-const Color errorColor = Color(0xFFFF4B4B);
-
+import 'package:socialx/themes/app_colors.dart';
 // Text styles
 final TextStyle titleStyle = GoogleFonts.poppins(
-  color: textPrimary,
+  color: AppColors.textPrimary,
   fontWeight: FontWeight.bold,
   fontSize: 24,
   letterSpacing: 0.5,
 );
 
 final TextStyle subtitleStyle = GoogleFonts.poppins(
-  color: textSecondary,
+  color: AppColors.textSecondary,
   fontSize: 16,
   fontWeight: FontWeight.w500,
 );
 
 final TextStyle bodyStyle = GoogleFonts.poppins(
-  color: textSecondary,
+  color: AppColors.textSecondary,
   fontSize: 14,
 );
 
 final TextStyle buttonStyle = GoogleFonts.poppins(
-  color: accentColor,
+  color: Colors.cyan,
   fontSize: 12,
   fontWeight: FontWeight.w600,
 );
@@ -131,7 +120,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         currentPassword = await showDialog<String>(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: surfaceColor,
+            backgroundColor: AppColors.surface,
             title: Text(
               'Enter Current Password',
               style: titleStyle.copyWith(fontSize: 20),
@@ -140,11 +129,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
               controller: passwordController,
               hintText: 'Current Password',
               obscuretext: true,
-              style: bodyStyle.copyWith(color: textPrimary),
-              cursorColor: textPrimary,
+              style: bodyStyle.copyWith(color: AppColors.textPrimary),
+              cursorColor: AppColors.textPrimary,
               decoration: InputDecoration(
                 hintStyle: bodyStyle.copyWith(
-                  color: textSecondary.withOpacity(0.5),
+                  color: AppColors.textSecondary.withOpacity(0.5),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -161,7 +150,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Cancel',
-                  style: bodyStyle.copyWith(color: accentColor),
+                  style: bodyStyle.copyWith(color: AppColors.primary),
                 ),
               ),
               TextButton(
@@ -170,7 +159,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 },
                 child: Text(
                   'Confirm',
-                  style: bodyStyle.copyWith(color: accentColor),
+                  style: bodyStyle.copyWith(color: AppColors.primary),
                 ),
               ),
             ],
@@ -201,18 +190,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
         //profile loading...
         if (state is ProfileLoading) {
           return Scaffold(
-            backgroundColor: backgroundColor,
+            backgroundColor: AppColors.background,
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(
-                    color: accentColor,
+                    color: AppColors.primary,
                     strokeWidth: 3,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Uploading...',
+                    'Updating profile...',
                     style: subtitleStyle,
                   ),
                 ],
@@ -227,19 +216,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
       listener: (context, state) {
         if (state is ProfileLoaded) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile updated successfully!'),
-              backgroundColor: accentColor,
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Text(
+                'Profile updated successfully!',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: AppColors.primary,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
           Navigator.pop(context);
         } else if (state is ProfileSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
-              backgroundColor: accentColor,
+              content: Text(
+                state.message,
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: AppColors.primary,
               duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
           // Don't navigate back if we need to verify email
@@ -249,9 +252,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         } else if (state is ProfileErrors) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
-              backgroundColor: errorColor,
+              content: Text(
+                state.message,
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: AppColors.error,
               duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         }
@@ -261,41 +271,62 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget buildEditPage() {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: surfaceColor,
+        backgroundColor: AppColors.surface,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
+                color: Colors.cyan.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.edit_rounded,
-                color: accentColor,
-                size: 28,
+                color: Colors.cyan,
+                size: 24,
               ),
             ),
             const SizedBox(width: 12),
             Text(
               'Edit Profile',
-              style: titleStyle,
+              style: titleStyle.copyWith(
+                color: Colors.black,
+              ),
             ),
           ],
         ),
-        foregroundColor: textPrimary,
         actions: [
           //save button
           Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: IconButton(
+            margin: const EdgeInsets.only(right: 16),
+            child: TextButton.icon(
               onPressed: updateProfile,
               icon: const Icon(
                 Icons.check_rounded,
-                color: accentColor,
+                color: Colors.cyan,
+                size: 20,
+              ),
+              label: Text(
+                'Save',
+                style: GoogleFonts.poppins(
+                  color: Colors.cyan,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.cyan.withOpacity(0.1),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
           ),
@@ -307,105 +338,115 @@ class _EditProfilePageState extends State<EditProfilePage> {
             const SizedBox(height: 32),
             //profile pic
             Center(
-              child: Container(
-                height: 200,
-                width: 200,
-                decoration: BoxDecoration(
-                  color: surfaceColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.cyan.withOpacity(0.2),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: //display selected image for mobile
-                      (!kIsWeb && imagePickedFile != null)
-                          ? Image.file(
-                              File(imagePickedFile!.path!),
-                              fit: BoxFit.cover,
-                            )
-                          :
-                          //display selected image for web
-                          (kIsWeb && webImage != null)
+                    child: ClipOval(
+                      child: imagePickedFile != null
+                          ? kIsWeb
                               ? Image.memory(
                                   webImage!,
                                   fit: BoxFit.cover,
                                 )
-                              :
-                              //No image selected -> display existing profile pic
-                              widget.user.profileImageUrl.isNotEmpty &&
-                                      widget.user.profileImageUrl != 'null'
-                                  ? CachedNetworkImage(
-                                      imageUrl: widget.user.profileImageUrl,
-                                      //loading...
-                                      placeholder: (context, url) =>
-                                          const CircularProgressIndicator(
-                                        color: accentColor,
-                                        strokeWidth: 3,
-                                      ),
-                                      //error -> failed to load
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(
-                                        Icons.person_rounded,
-                                        size: 72,
-                                        color: textSecondary,
-                                      ),
-                                      //loaded
-                                      imageBuilder: (context, imageProvider) =>
-                                          Container(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          image: DecorationImage(
-                                            image: imageProvider,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.person_rounded,
-                                      size: 72,
-                                      color: textSecondary,
+                              : Image.file(
+                                  File(imagePickedFile!.path!),
+                                  fit: BoxFit.cover,
+                                )
+                          : widget.user.profileImageUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: widget.user.profileImageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.cyan,
                                     ),
-                ),
+                                  ),
+                                  errorWidget: (context, url, error) => const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  color: Colors.grey,
+                                  size: 40,
+                                ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: pickImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.cyan,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 24),
-
-            //pick image button
+            const SizedBox(height: 8),
+            
+            // Change photo text
             Center(
-              child: ElevatedButton.icon(
+              child: TextButton(
                 onPressed: pickImage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: accentColor,
-                  foregroundColor: textPrimary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.camera_alt_rounded,
-                  size: 20,
-                ),
-                label: Text(
-                  'Change Photo',
-                  style: buttonStyle.copyWith(
-                    color: textPrimary,
+                child: Text(
+                  'Change Profile Photo',
+                  style: GoogleFonts.poppins(
+                    color: Colors.cyan,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
                 ),
               ),
             ),
 
             const SizedBox(height: 32),
+            
+            // Divider
+            Container(
+              height: 1,
+              color: AppColors.divider,
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+            ),
+            
+            const SizedBox(height: 24),
 
             //name section
             Padding(
@@ -413,35 +454,49 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person_outline_rounded,
+                        color: Colors.cyan.withOpacity(0.7),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
                   Text(
                     'Name',
-                    style: subtitleStyle,
+                        style: subtitleStyle.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.cyan.withOpacity(0.1),
+                        width: 1,
+                      ),
                     ),
                     child: MyTextfield(
                       controller: nameTextController,
                       hintText: 'Enter your name',
                       obscuretext: false,
-                      style: bodyStyle.copyWith(color: textPrimary),
-                      cursorColor: textPrimary,
+                      style: bodyStyle.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                      ),
+                      cursorColor: Colors.cyan,
                       decoration: InputDecoration(
                         hintStyle: bodyStyle.copyWith(
-                          color: textSecondary.withOpacity(0.5),
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                          fontSize: 16,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -463,35 +518,49 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.email_outlined,
+                        color: Colors.cyan.withOpacity(0.7),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
                   Text(
                     'Email',
-                    style: subtitleStyle,
+                        style: subtitleStyle.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.cyan.withOpacity(0.1),
+                        width: 1,
+                      ),
                     ),
                     child: MyTextfield(
                       controller: emailTextController,
                       hintText: 'Enter your email',
                       obscuretext: false,
-                      style: bodyStyle.copyWith(color: textPrimary),
-                      cursorColor: textPrimary,
+                      style: bodyStyle.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                      ),
+                      cursorColor: Colors.cyan,
                       decoration: InputDecoration(
                         hintStyle: bodyStyle.copyWith(
-                          color: textSecondary.withOpacity(0.5),
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                          fontSize: 16,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -513,35 +582,50 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        color: Colors.cyan.withOpacity(0.7),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
                   Text(
                     'Bio',
-                    style: subtitleStyle,
+                        style: subtitleStyle.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.cyan.withOpacity(0.1),
+                        width: 1,
+                      ),
                     ),
                     child: MyTextfield(
                       controller: bioTextController,
-                      hintText: 'Enter your bio',
+                      hintText: 'Tell us about yourself',
                       obscuretext: false,
-                      style: bodyStyle.copyWith(color: textPrimary),
-                      cursorColor: textPrimary,
+                      maxLines: 4,
+                      style: bodyStyle.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                      ),
+                      cursorColor: Colors.cyan,
                       decoration: InputDecoration(
                         hintStyle: bodyStyle.copyWith(
-                          color: textSecondary.withOpacity(0.5),
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                          fontSize: 16,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -557,67 +641,137 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
             const SizedBox(height: 32),
 
-            //logout button
+            // Divider
+            Container(
+              height: 1,
+              color: AppColors.divider,
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+            ),
+            
+            const SizedBox(height: 24),
+
+            // Logout Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await context.read<AuthCubit>().logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/',
-                      (route) => false,
-                    );
-                  }
+              child: TextButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: AppColors.surface,
+                      title: Row(
+                        children: [
+                          Icon(
+                            Icons.logout_rounded,
+                            color: AppColors.error,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Logout',
+                            style: titleStyle.copyWith(
+                              color: AppColors.error,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      content: Text(
+                        'Are you sure you want to logout?',
+                        style: bodyStyle,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Cancel',
+                            style: bodyStyle.copyWith(color: AppColors.primary),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              await context.read<AuthCubit>().logout();
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Failed to logout: ${e.toString()}',
+                                      style: bodyStyle,
+                                    ),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Text(
+                            'Logout',
+                            style: bodyStyle.copyWith(color: AppColors.error),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: errorColor,
-                  foregroundColor: textPrimary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
                 icon: const Icon(
                   Icons.logout_rounded,
+                  color: AppColors.error,
                   size: 20,
                 ),
                 label: Text(
                   'Logout',
-                  style: buttonStyle.copyWith(
-                    color: textPrimary,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // Delete Account Button
+            //delete account button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: ElevatedButton.icon(
-                onPressed: () {
+              child: TextButton.icon(
+                onPressed: () async {
                   final passwordController = TextEditingController();
-                  showDialog(
+                  final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      backgroundColor: surfaceColor,
-                      title: Text(
+                      backgroundColor: AppColors.surface,
+                      title: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_rounded,
+                            color: AppColors.error,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
                         'Delete Account',
                         style: titleStyle.copyWith(
-                          color: errorColor,
+                              color: AppColors.error,
                           fontSize: 20,
                         ),
+                          ),
+                        ],
                       ),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Are you sure you want to delete your account? This action cannot be undone.',
+                            'This action cannot be undone. All your data will be permanently deleted.',
                             style: bodyStyle,
                           ),
                           const SizedBox(height: 16),
@@ -625,17 +779,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             controller: passwordController,
                             hintText: 'Enter your password to confirm',
                             obscuretext: true,
-                            style: bodyStyle,
+                            style: bodyStyle.copyWith(color: AppColors.textPrimary),
+                            cursorColor: AppColors.textPrimary,
+                            decoration: InputDecoration(
+                              hintStyle: bodyStyle.copyWith(
+                                color: AppColors.textSecondary.withOpacity(0.5),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.lock_outline_rounded,
+                                color: AppColors.error.withOpacity(0.7),
+                                size: 20,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.pop(context, false),
                           child: Text(
                             'Cancel',
-                            style: buttonStyle.copyWith(
-                              color: textSecondary,
+                            style: bodyStyle.copyWith(
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -648,7 +821,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     'Please enter your password',
                                     style: bodyStyle,
                                   ),
-                                  backgroundColor: errorColor,
+                                  backgroundColor: AppColors.error,
                                 ),
                               );
                               return;
@@ -659,7 +832,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 .read<AuthCubit>()
                                 .deleteAccount(passwordController.text);
                             if (context.mounted) {
-                              Navigator.pop(context); // Close dialog
+                              Navigator.pop(context, true); // Close dialog
                               Navigator.of(context).pushNamedAndRemoveUntil(
                                 '/',
                                 (route) => false,
@@ -668,8 +841,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           },
                           child: Text(
                             'Delete',
-                            style: buttonStyle.copyWith(
-                              color: errorColor,
+                            style: bodyStyle.copyWith(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -677,33 +851,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: errorColor.withOpacity(0.1),
-                  foregroundColor: errorColor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: errorColor,
-                      width: 1,
-                    ),
-                  ),
-                ),
                 icon: const Icon(
                   Icons.delete_forever_rounded,
+                  color: AppColors.error,
                   size: 20,
                 ),
                 label: Text(
                   'Delete Account',
-                  style: buttonStyle.copyWith(
-                    color: errorColor,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
+            
+            const SizedBox(height: 32),
           ],
         ),
       ),

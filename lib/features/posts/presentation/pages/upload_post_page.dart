@@ -12,6 +12,7 @@ import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:socialx/themes/app_colors.dart';
 
 // Dark mode color scheme
 const Color primaryColor = Color(0xFF1A1A1A);
@@ -73,39 +74,83 @@ class _UploadPostPageState extends State<UploadPostPage> {
   Future<void> pickImage() async {
     showModalBottomSheet(
       context: context,
-      backgroundColor: surfaceColor,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: accentColor),
-              title: const Text(
-                'Choose from Gallery',
-                style: TextStyle(color: Colors.white),
+            Text(
+              'Choose Image Source',
+              style: GoogleFonts.poppins(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
-              onTap: () async {
-                Navigator.pop(context);
-                await _pickImageFromSource(ImageSource.gallery);
-              },
             ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: accentColor),
-              title: const Text(
-                'Take a Photo',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () async {
-                Navigator.pop(context);
-                await _pickImageFromSource(ImageSource.camera);
-              },
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildImageSourceOption(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Gallery',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _pickImageFromSource(ImageSource.gallery);
+                  },
+                ),
+                _buildImageSourceOption(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Camera',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _pickImageFromSource(ImageSource.camera);
+                  },
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: AppColors.primary,
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -120,35 +165,34 @@ class _UploadPostPageState extends State<UploadPostPage> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        // Show image preview and editing options
-        if (context.mounted) {
-          final editedImage = await _showImagePreviewAndEdit(image.path);
-          if (editedImage != null) {
-            Uint8List? imageBytes;
-            if (kIsWeb) {
-              imageBytes = await editedImage.readAsBytes();
-            }
-            setState(() {
-              imagePickedFile = PlatformFile(
-                name: editedImage.name,
-                path: editedImage.path,
-                size: 0,
-              );
-              if (kIsWeb) {
-                webImage = imageBytes;
-              }
-            });
+      if (image != null && context.mounted) {
+        final editedImage = await _showImagePreviewAndEdit(image.path);
+        if (editedImage != null) {
+          Uint8List? imageBytes;
+          if (kIsWeb) {
+            imageBytes = await editedImage.readAsBytes();
           }
+          setState(() {
+            imagePickedFile = PlatformFile(
+              name: editedImage.name,
+              path: editedImage.path,
+              size: 0,
+            );
+            if (kIsWeb) {
+              webImage = imageBytes;
+            }
+          });
         }
       }
     } catch (e) {
-      print('Error picking image: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking image: $e'),
-            backgroundColor: errorColor,
+            content: Text(
+              'Error picking image: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -159,7 +203,10 @@ class _UploadPostPageState extends State<UploadPostPage> {
     return showDialog<XFile>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: surfaceColor,
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -167,12 +214,10 @@ class _UploadPostPageState extends State<UploadPostPage> {
               height: 300,
               width: double.infinity,
               decoration: BoxDecoration(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 child: Image.file(
                   File(imagePath),
                   fit: BoxFit.cover,
@@ -185,23 +230,32 @@ class _UploadPostPageState extends State<UploadPostPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    label: const Text(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: AppColors.textPrimary),
+                    label: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.white),
+                      style: GoogleFonts.poppins(color: AppColors.textPrimary),
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(context, XFile(imagePath));
-                    },
-                    icon: const Icon(Icons.check, color: accentColor),
-                    label: const Text(
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context, XFile(imagePath)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.check),
+                    label: Text(
                       'Use Photo',
-                      style: TextStyle(color: accentColor),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -231,9 +285,12 @@ class _UploadPostPageState extends State<UploadPostPage> {
   void uploadPost() {
     if (imagePickedFile == null || textEditingController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Both the image and caption are required'),
-          backgroundColor: errorColor,
+        SnackBar(
+          content: Text(
+            'Please select an image and write a caption',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -250,12 +307,10 @@ class _UploadPostPageState extends State<UploadPostPage> {
       comment: [],
     );
 
-    final postCubit = context.read<PostCubit>();
-
     if (kIsWeb) {
-      postCubit.createPost(newPost, imageBytes: imagePickedFile?.bytes);
+      context.read<PostCubit>().createPost(newPost, imageBytes: imagePickedFile?.bytes);
     } else {
-      postCubit.createPost(newPost, imagePath: imagePickedFile?.path);
+      context.read<PostCubit>().createPost(newPost, imagePath: imagePickedFile?.path);
     }
   }
 
@@ -271,22 +326,19 @@ class _UploadPostPageState extends State<UploadPostPage> {
       builder: (context, state) {
         if (state is PostsLoading || state is PostsUploading) {
           return Scaffold(
-            backgroundColor: backgroundColor,
+            backgroundColor: AppColors.background,
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(
-                    color: accentColor,
-                    strokeWidth: 3,
+                  CircularProgressIndicator(
+                    color: AppColors.primary,
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    state is PostsUploading
-                        ? 'Uploading post...'
-                        : 'Loading...',
-                    style: const TextStyle(
-                      color: textPrimary,
+                    state is PostsUploading ? 'Creating your post...' : 'Loading...',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.textPrimary,
                       fontSize: 16,
                     ),
                   ),
@@ -307,134 +359,155 @@ class _UploadPostPageState extends State<UploadPostPage> {
 
   Widget buildUploadPage() {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: textPrimary),
-        backgroundColor: surfaceColor,
         elevation: 0,
-        title: const Text(
+        backgroundColor: AppColors.background,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
           'Create Post',
-          style: TextStyle(
-            color: textPrimary,
+          style: GoogleFonts.poppins(
+            color: AppColors.textPrimary,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: uploadPost,
-            icon: const Icon(Icons.check, color: accentColor),
-            tooltip: 'Upload Post',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ElevatedButton(
+              onPressed: uploadPost,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Share',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Image Preview Section
-              Container(
-                height: 300,
-                decoration: BoxDecoration(
-                  color: surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: dividerColor,
-                    width: 1,
+              GestureDetector(
+                onTap: pickImage,
+                child: Container(
+                  height: 300,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.2),
+                      width: 2,
+                    ),
                   ),
-                ),
-                child: imagePickedFile == null
-                    ? Center(
-                        child: Column(
+                  child: imagePickedFile == null
+                      ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.image_outlined,
-                              size: 64,
-                              color: textSecondary.withOpacity(0.5),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.add_photo_alternate_rounded,
+                                size: 48,
+                                color: AppColors.primary,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No image selected',
-                              style: TextStyle(
-                                color: textSecondary.withOpacity(0.5),
+                              'Tap to add a photo',
+                              style: GoogleFonts.poppins(
+                                color: AppColors.textPrimary,
                                 fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Share your moments with others',
+                              style: GoogleFonts.poppins(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
                               ),
                             ),
                           ],
-                        ),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: kIsWeb
-                            ? Image.memory(
-                                webImage!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              )
-                            : Image.file(
-                                File(imagePickedFile!.path!),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              kIsWeb
+                                  ? Image.memory(
+                                      webImage!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.file(
+                                      File(imagePickedFile!.path!),
+                                      fit: BoxFit.cover,
+                                    ),
+                              Positioned(
+                                bottom: 16,
+                                right: 16,
+                                child: IconButton.filled(
+                                  onPressed: pickImage,
+                                  icon: const Icon(Icons.edit),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
                               ),
-                      ),
-              ),
-              const SizedBox(height: 24),
-
-              // Pick Image Button
-              ElevatedButton.icon(
-                onPressed: pickImage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: accentColor,
-                  foregroundColor: textPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.add_photo_alternate),
-                label: Text(
-                  imagePickedFile == null ? 'Pick Image' : 'Change Image',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                            ],
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Caption Text Field
               Container(
                 decoration: BoxDecoration(
-                  color: surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: dividerColor,
-                    width: 1,
+                    color: AppColors.primary.withOpacity(0.2),
+                    width: 2,
                   ),
                 ),
-                child: MyTextfield(
+                child: TextField(
                   controller: textEditingController,
-                  hintText: 'Write a caption...',
-                  obscuretext: false,
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                  ),
                   maxLines: 5,
-                  style: bodyStyle.copyWith(color: textPrimary),
-                  cursorColor: textPrimary,
                   decoration: InputDecoration(
-                    hintStyle: bodyStyle.copyWith(
-                      color: textSecondary.withOpacity(0.5),
+                    hintText: 'Write a caption...',
+                    hintStyle: GoogleFonts.poppins(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
                   ),
                 ),
               ),
