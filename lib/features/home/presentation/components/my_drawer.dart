@@ -4,6 +4,8 @@ import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/home/presentation/components/my_drawer_tile.dart';
 import 'package:socialx/features/posts/presentation/pages/twitter.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:socialx/themes/app_colors.dart';
 
 class MyDrawer extends StatelessWidget {
   const MyDrawer({super.key});
@@ -84,7 +86,92 @@ class MyDrawer extends StatelessWidget {
                 const Spacer(),
           
                 //logout tile
-                MyDrawerTile(title: 'L O G O U T', icon: Icons.logout, onTap: () =>context.read<AuthCubit>().logout(),),
+                MyDrawerTile(
+                  title: 'L O G O U T', 
+                  icon: Icons.logout, 
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: AppColors.surface,
+                        title: Row(
+                          children: [
+                            Icon(
+                              Icons.logout_rounded,
+                              color: AppColors.error,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Logout',
+                              style: GoogleFonts.poppins(
+                                color: AppColors.error,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: Text(
+                          'Are you sure you want to logout?',
+                          style: GoogleFonts.poppins(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              // Close the dialog first
+                              Navigator.pop(context);
+                              try {
+                                await context.read<AuthCubit>().logout();
+                                if (context.mounted) {
+                                  // Navigate to auth page and remove all routes
+                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                    '/',
+                                    (route) => false,
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to logout: ${e.toString()}',
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: Text(
+                              'Logout',
+                              style: GoogleFonts.poppins(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),

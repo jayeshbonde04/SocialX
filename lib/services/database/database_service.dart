@@ -288,12 +288,93 @@ MESSAGING FEATURE
     }
   }
 
-  //GET MESSAGES
+  // Update message status
+  Future<void> updateMessageStatus(String chatRoomId, String messageId, MessageStatus status) async {
+    try {
+      final messageRef = _db
+          .collection("chat_rooms")
+          .doc(chatRoomId)
+          .collection("messages")
+          .doc(messageId);
+
+      if (status == MessageStatus.seen) {
+        await messageRef.update({
+          'status': status.toString(),
+          'seenAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await messageRef.update({
+          'status': status.toString(),
+        });
+      }
+    } catch (e) {
+      print("Error updating message status: $e");
+    }
+  }
+
+  // Mark messages as delivered
+  Future<void> markMessagesAsDelivered(String chatRoomId, String senderId) async {
+    try {
+      final messagesSnapshot = await _db
+          .collection("chat_rooms")
+          .doc(chatRoomId)
+          .collection("messages")
+          .where('senderID', isEqualTo: senderId)
+          .where('status', isEqualTo: MessageStatus.sent.toString())
+          .get();
+
+      final batch = _db.batch();
+      for (var doc in messagesSnapshot.docs) {
+        batch.update(doc.reference, {
+          'status': MessageStatus.delivered.toString(),
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      print("Error marking messages as delivered: $e");
+    }
+  }
+
+  // Mark messages as seen
+  Future<void> markMessagesAsSeen(String chatRoomId, String senderId) async {
+    try {
+      final currentTimestamp = Timestamp.now();
+      final messagesSnapshot = await _db
+          .collection("chat_rooms")
+          .doc(chatRoomId)
+          .collection("messages")
+          .where('senderID', isEqualTo: senderId)
+          .where('status', whereIn: [
+            MessageStatus.delivered.toString(),
+            MessageStatus.sent.toString(),
+          ])
+          .get();
+
+      final batch = _db.batch();
+      for (var doc in messagesSnapshot.docs) {
+        batch.update(doc.reference, {
+          'status': MessageStatus.seen.toString(),
+          'seenAt': currentTimestamp,
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      print("Error marking messages as seen: $e");
+    }
+  }
+
+  // Modified getMessages to automatically mark messages as delivered/seen
   Stream<QuerySnapshot> getMessages(String userID, otherUserID) {
-    //construct a chatroom ID for the two users
+    // Construct chat room ID
     List<String> ids = [userID, otherUserID];
     ids.sort();
     String chatRoomID = ids.join('_');
+
+    // Mark messages as delivered when the stream is first listened to
+    markMessagesAsDelivered(chatRoomID, otherUserID);
+
+    // Mark messages as seen when the user is actively viewing them
+    markMessagesAsSeen(chatRoomID, otherUserID);
 
     return _db
         .collection("chat_rooms")
@@ -505,6 +586,84 @@ MESSAGING FEATURE
       }
     } catch (e) {
       print('Error deleting account: $e');
+      rethrow;
+    }
+  }
+
+  // Create a pending message
+  Future<DocumentReference> createPendingMessage(
+    String receiverID,
+    String message, {
+    MessageType type = MessageType.text,
+  }) async {
+    try {
+      // Get current user info
+      final String currentUserId = _auth.currentUser!.uid;
+      final String currentUserEmail = _auth.currentUser!.email!;
+      final Timestamp timestamp = Timestamp.now();
+
+      // Create a new message
+      Message newMessage = Message(
+        senderID: currentUserEmail,
+        senderEmail: currentUserId,
+        receiverID: receiverID,
+        message: message,
+        timestamp: timestamp,
+        type: type,
+        status: MessageStatus.pending,
+      );
+
+      // Construct chat room ID
+      List<String> ids = [currentUserId, receiverID];
+      ids.sort();
+      String chatRoomID = ids.join('_');
+
+      // Create or update chat room
+      await _db.collection("chat_rooms").doc(chatRoomID).set({
+        'participants': [currentUserId, receiverID],
+        'lastMessage': message,
+        'lastMessageTime': timestamp,
+        'createdAt': timestamp,
+      }, SetOptions(merge: true));
+
+      // Add pending message and return its reference
+      return await _db
+          .collection("chat_rooms")
+          .doc(chatRoomID)
+          .collection("messages")
+          .add(newMessage.toMap());
+    } catch (e) {
+      print("Error creating pending message: $e");
+      rethrow;
+    }
+  }
+
+  // Update a pending message with media URL
+  Future<void> updatePendingMessage(
+    DocumentReference messageDoc,
+    String message, {
+    String? mediaUrl,
+    int? audioDuration,
+  }) async {
+    try {
+      await messageDoc.update({
+        'message': message,
+        'mediaUrl': mediaUrl,
+        'audioDuration': audioDuration,
+        'status': MessageStatus.sent.toString(),
+      });
+    } catch (e) {
+      print("Error updating pending message: $e");
+      rethrow;
+    }
+  }
+
+  // Delete a pending message
+  Future<void> deletePendingMessage(DocumentReference messageDoc) async {
+    try {
+      await messageDoc.delete();
+    } catch (e) {
+      print("Error deleting pending message: $e");
       rethrow;
     }
   }

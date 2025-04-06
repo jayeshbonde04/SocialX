@@ -21,35 +21,32 @@ import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_state.dart';
 import 'package:socialx/features/home/presentation/pages/home_page.dart';
 import 'package:socialx/features/auth/presentation/pages/forgot_password_page.dart';
-
-// Dark mode color scheme
-const Color primaryColor = Color(0xFF1A1A1A);
-const Color secondaryColor = Color(0xFF2D2D2D);
-const Color accentColor = Color(0xFF6C63FF);
-const Color backgroundColor = Color(0xFF121212);
-const Color surfaceColor = Color(0xFF1E1E1E);
-const Color textPrimary = Color(0xFFFFFFFF);
-const Color textSecondary = Color(0xFFB3B3B3);
-const Color dividerColor = Color(0xFF2D2D2D);
-const Color errorColor = Color(0xFFFF4B4B);
+import 'package:socialx/themes/app_colors.dart';
 
 // Text styles
 final TextStyle titleStyle = GoogleFonts.poppins(
-  color: textPrimary,
+  color: AppColors.textPrimary,
   fontWeight: FontWeight.bold,
-  fontSize: 24,
+  fontSize: 32,
   letterSpacing: 0.5,
 );
 
 final TextStyle subtitleStyle = GoogleFonts.poppins(
-  color: textSecondary,
+  color: AppColors.textSecondary,
   fontSize: 16,
   fontWeight: FontWeight.w500,
 );
 
 final TextStyle bodyStyle = GoogleFonts.poppins(
-  color: textSecondary,
+  color: AppColors.textSecondary,
   fontSize: 14,
+);
+
+final TextStyle appNameStyle = GoogleFonts.montserrat(
+  color: AppColors.accent,
+  fontWeight: FontWeight.w800,
+  fontSize: 36,
+  letterSpacing: 1.2,
 );
 
 class LoginPage extends StatefulWidget {
@@ -82,10 +79,13 @@ class _LoginPageState extends State<LoginPage> {
       FocusScope.of(context).unfocus();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter both email and password"),
-          backgroundColor: errorColor,
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(
+            "Please enter both email and password",
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -101,14 +101,17 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.green,
+                content: Text(
+                  state.message,
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+                backgroundColor: AppColors.success,
                 duration: const Duration(seconds: 3),
               ),
             );
@@ -120,8 +123,11 @@ class _LoginPageState extends State<LoginPage> {
           } else if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.error),
-                backgroundColor: errorColor,
+                content: Text(
+                  state.error,
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+                backgroundColor: AppColors.error,
                 duration: const Duration(seconds: 2),
               ),
             );
@@ -134,46 +140,62 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 48),
-                  // Logo
+                  const SizedBox(height: 40),
+                  // App Logo and Name
                   Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accent.withOpacity(0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/social_app_logo.jpg',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "SocialX",
+                          style: appNameStyle,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Connect. Share. Inspire.",
+                          style: subtitleStyle.copyWith(
+                            color: AppColors.textSecondary.withOpacity(0.8),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: const Icon(
-                      Icons.lock_open_rounded,
-                      size: 64,
-                      color: accentColor,
-                    ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Welcome Text
-                  Text(
-                    "Welcome back!",
-                    style: titleStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Sign in to continue",
-                    style: subtitleStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 40),
 
                   // Email Field
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color.fromARGB(255, 176, 228, 235),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -181,21 +203,21 @@ class _LoginPageState extends State<LoginPage> {
                       controller: emailController,
                       hintText: "Email",
                       obscuretext: false,
-                      style: bodyStyle.copyWith(color: textPrimary),
-                      cursorColor: textPrimary,
+                      style: bodyStyle.copyWith(color: AppColors.textPrimary),
+                      cursorColor: AppColors.textPrimary,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.email_outlined,
-                            color: textSecondary),
+                            color: AppColors.textSecondary),
                         hintStyle: bodyStyle.copyWith(
-                          color: textSecondary.withOpacity(0.5),
+                          color: AppColors.textSecondary.withOpacity(0.5),
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                          horizontal: 20,
+                          vertical: 16,
                         ),
                       ),
                     ),
@@ -205,13 +227,13 @@ class _LoginPageState extends State<LoginPage> {
                   // Password Field
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color.fromARGB(255, 176, 228, 235),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -219,21 +241,21 @@ class _LoginPageState extends State<LoginPage> {
                       controller: passwordController,
                       hintText: "Password",
                       obscuretext: true,
-                      style: bodyStyle.copyWith(color: textPrimary),
-                      cursorColor: textPrimary,
+                      style: bodyStyle.copyWith(color: AppColors.textPrimary),
+                      cursorColor: AppColors.textPrimary,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.lock_outline,
-                            color: textSecondary),
+                            color: AppColors.textSecondary),
                         hintStyle: bodyStyle.copyWith(
-                          color: textSecondary.withOpacity(0.5),
+                          color: AppColors.textSecondary.withOpacity(0.5),
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                          horizontal: 20,
+                          vertical: 16,
                         ),
                       ),
                     ),
@@ -253,64 +275,91 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       child: Text(
                         'Forgot Password?',
-                        style: bodyStyle.copyWith(color: accentColor),
+                        style: bodyStyle.copyWith(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Login Button
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          AppColors.accent,
+                          AppColors.accent.withOpacity(0.8),
+                        ],
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: accentColor.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          color: AppColors.accent.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
                     child: ElevatedButton(
                       onPressed: login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: accentColor,
-                        foregroundColor: textPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: AppColors.textPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        elevation: 0,
                       ),
-                      child: const Text(
+                      child: Text(
                         "Sign In",
-                        style: TextStyle(
+                        style: GoogleFonts.poppins(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Register Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Don't have an account?",
-                        style: bodyStyle,
-                      ),
-                      TextButton(
-                        onPressed: widget.togglePages,
-                        child: Text(
-                          " Sign Up",
-                          style: bodyStyle.copyWith(
-                            color: accentColor,
-                            fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account?",
+                          style: bodyStyle,
+                        ),
+                        TextButton(
+                          onPressed: widget.togglePages,
+                          child: Text(
+                            " Sign Up",
+                            style: bodyStyle.copyWith(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

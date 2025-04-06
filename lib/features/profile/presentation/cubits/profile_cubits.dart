@@ -49,6 +49,7 @@ class ProfileCubit extends Cubit<ProfileStates> {
     String? newName,
     String? newEmail,
     String? currentPassword,
+    bool? newIsPrivate,
   }) async {
     emit(ProfileLoading());
 
@@ -109,56 +110,84 @@ class ProfileCubit extends Cubit<ProfileStates> {
               rethrow;
             }
           }
-          
-          // Wait for a moment to ensure Firebase Auth update is complete
-          await Future.delayed(const Duration(milliseconds: 1000));
-          
-          // Verify the email was updated
-          final updatedAuthUser = FirebaseAuth.instance.currentUser;
-          if (updatedAuthUser?.email != newEmail) {
-            emit(ProfileErrors("Failed to update email in Firebase Authentication"));
-            return;
-          }
-          
-          print('Email updated successfully in Firebase Auth');
         } catch (e) {
-          print('Error updating email: $e');
-          emit(ProfileErrors("Failed to update email: $e"));
+          emit(ProfileErrors(e.toString()));
           return;
         }
       }
 
-      //update new profile
-      final updateProfile = currentUser.copyWith(
-        newBio: newBio ?? currentUser.bio,
-        newProfileImageUrl: imageDownloadUrl ?? currentUser.profileImageUrl,
-        newName: newName ?? currentUser.name,
-        newEmail: newEmail ?? currentUser.email,
+      //create updated profile
+      final updatedProfile = currentUser.copyWith(
+        newBio: newBio,
+        newProfileImageUrl: imageDownloadUrl,
+        newName: newName,
+        newEmail: newEmail,
+        newIsPrivate: newIsPrivate,
       );
 
-      //update in repo
-      await profileRepo.updateProfile(updateProfile);
+      //update profile in firebase
+      await profileRepo.updateProfile(updatedProfile);
 
-      //refetch the update profile
-      final updatedUser = await profileRepo.fetchUserProfile(uid);
-      if (updatedUser != null) {
-        emit(ProfileLoaded(updatedUser));
-      } else {
-        emit(ProfileErrors("Failed to fetch updated profile"));
-      }
+      //emit success
+      emit(ProfileSuccess("Profile updated successfully!"));
     } catch (e) {
-      emit(ProfileErrors('Error updating profile: $e'));
+      emit(ProfileErrors(e.toString()));
     }
   }
 
   //toggle follow status between two users
   Future<void> toggleFollow(String targetUserId, String currentUserId) async {
     try {
-      await profileRepo.toggleFollow(targetUserId, currentUserId);
-      // Refresh the profile to show updated follow status
-      await fetchUserProfile(targetUserId);
+      emit(ProfileLoading());
+      
+      // Get target user profile to check if private
+      final targetUser = await profileRepo.fetchUserProfile(targetUserId);
+      if (targetUser == null) {
+        emit(ProfileErrors("User not found"));
+        return;
+      }
+      
+      if (targetUser.isPrivate) {
+        // For private accounts, send follow request
+        await profileRepo.toggleFollow(targetUserId, currentUserId);
+        emit(FollowRequestSent("Follow request sent to ${targetUser.name}"));
+      } else {
+        // For public accounts, follow directly
+        await profileRepo.toggleFollow(targetUserId, currentUserId);
+        await fetchUserProfile(targetUserId);
+      }
     } catch (e) {
       emit(ProfileErrors("Failed to toggle follow: $e"));
+    }
+  }
+
+  // Handle follow request (accept/reject)
+  Future<void> handleFollowRequest(String targetUserId, String currentUserId, bool accept) async {
+    try {
+      emit(ProfileLoading());
+      await profileRepo.handleFollowRequest(targetUserId, currentUserId, accept);
+      
+      if (accept) {
+        emit(FollowRequestAccepted("Follow request accepted"));
+      } else {
+        emit(FollowRequestRejected("Follow request rejected"));
+      }
+      
+      // Refresh both profiles
+      await fetchUserProfile(targetUserId);
+      await fetchUserProfile(currentUserId);
+    } catch (e) {
+      emit(ProfileErrors("Failed to handle follow request: $e"));
+    }
+  }
+
+  // Get follow requests for current user
+  Future<List<String>> getFollowRequests(String userId) async {
+    try {
+      return await profileRepo.getFollowRequests(userId);
+    } catch (e) {
+      emit(ProfileErrors("Failed to get follow requests: $e"));
+      return [];
     }
   }
 

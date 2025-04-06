@@ -15,6 +15,11 @@ import 'package:socialx/features/profile/presentation/cubits/profile_states.dart
 import 'package:socialx/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:socialx/features/profile/presentation/pages/followers_following_page.dart';
 import 'package:socialx/themes/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:socialx/features/home/presentation/pages/home_page.dart';
+import 'package:socialx/features/search/presentation/pages/search_page.dart';
+import 'package:socialx/features/posts/presentation/pages/upload_post_page.dart';
+import 'package:socialx/features/posts/presentation/pages/twitter.dart';
 
 // Text styles
 final TextStyle titleStyle = GoogleFonts.poppins(
@@ -63,6 +68,9 @@ class _ProfilePageState extends State<ProfilePage> {
   //toggle state
   bool showPhotos = true;
 
+  // Selected index for bottom navigation
+  int _selectedIndex = 4;  // Profile tab is selected by default
+
   //on startup
   @override
   void initState() {
@@ -88,6 +96,53 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {
       showPhotos = !showPhotos;
     });
+  }
+
+  void _onItemTapped(int index) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    switch (index) {
+      case 0: // Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+        break;
+      case 1: // Search
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SearchPage()),
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 4; // Reset to profile
+          });
+        });
+        break;
+      case 2: // Add Post
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UploadPostPage()),
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 4; // Reset to profile
+          });
+        });
+        break;
+      case 3: // Twitter
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const TwitterPage()),
+        ).then((_) {
+          setState(() {
+            _selectedIndex = 4; // Reset to profile
+          });
+        });
+        break;
+      case 4: // Profile
+        // Already on profile page
+        break;
+    }
   }
 
   void _showPostDialog(BuildContext context, Post post) {
@@ -754,9 +809,22 @@ class _ProfilePageState extends State<ProfilePage> {
                             user.name,
                             style: titleStyle,
                           ),
-                          Text(
-                            '@${user.name.toLowerCase()}',
-                            style: subtitleStyle,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '@${user.email.split('@')[0]}',
+                                style: subtitleStyle,
+                              ),
+                              if (user.isPrivate) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.lock_outline_rounded,
+                                  color: AppColors.textSecondary,
+                                  size: 16,
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 24),
                           Row(
@@ -867,6 +935,194 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
+                            ),
+                          const SizedBox(height: 24),
+                          // Show follow button or follow request status for non-owners
+                          if (user.uid != FirebaseAuth.instance.currentUser?.uid)
+                            BlocBuilder<ProfileCubit, ProfileStates>(
+                              builder: (context, state) {
+                                final isFollowing = user.followers.contains(currentUser?.uid);
+                                final hasPendingRequest = state is FollowRequestPending;
+                                
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: ElevatedButton(
+                                    onPressed: isFollowing || hasPendingRequest
+                                        ? null
+                                        : () {
+                                            if (user.isPrivate) {
+                                              context.read<ProfileCubit>().toggleFollow(
+                                                user.uid,
+                                                currentUser!.uid,
+                                              );
+                                            } else {
+                                              context.read<ProfileCubit>().toggleFollow(
+                                                user.uid,
+                                                currentUser!.uid,
+                                              );
+                                            }
+                                          },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isFollowing
+                                          ? AppColors.surface
+                                          : AppColors.primary,
+                                      foregroundColor: isFollowing
+                                          ? AppColors.textSecondary
+                                          : Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isFollowing
+                                          ? 'Following'
+                                          : hasPendingRequest
+                                              ? 'Request Sent'
+                                              : user.isPrivate
+                                                  ? 'Follow Request'
+                                                  : 'Follow',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          const SizedBox(height: 24),
+                          // Show follow requests for account owner
+                          if (user.uid == FirebaseAuth.instance.currentUser?.uid)
+                            FutureBuilder<List<String>>(
+                              future: context.read<ProfileCubit>().getFollowRequests(user.uid),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+                                
+                                final followRequests = snapshot.data ?? [];
+                                if (followRequests.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.1),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Follow Requests',
+                                        style: GoogleFonts.poppins(
+                                          color: AppColors.textPrimary,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ...followRequests.map((requestUserId) {
+                                        return FutureBuilder<ProfileUser?>(
+                                          future: context.read<ProfileCubit>().getUserProfile(requestUserId),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.connectionState == ConnectionState.waiting) {
+                                              return const Center(
+                                                child: CircularProgressIndicator(),
+                                              );
+                                            }
+                                            
+                                            final requestUser = snapshot.data;
+                                            if (requestUser == null) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            
+                                            return Padding(
+                                              padding: const EdgeInsets.only(bottom: 12),
+                                              child: Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 20,
+                                                    backgroundImage: requestUser.profileImageUrl.isNotEmpty
+                                                        ? NetworkImage(requestUser.profileImageUrl)
+                                                        : null,
+                                                    child: requestUser.profileImageUrl.isEmpty
+                                                        ? const Icon(Icons.person)
+                                                        : null,
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          requestUser.name,
+                                                          style: GoogleFonts.poppins(
+                                                            color: AppColors.textPrimary,
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          '@${requestUser.name.toLowerCase()}',
+                                                          style: GoogleFonts.poppins(
+                                                            color: AppColors.textSecondary,
+                                                            fontSize: 14,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      IconButton(
+                                                        onPressed: () {
+                                                          context.read<ProfileCubit>().handleFollowRequest(
+                                                            user.uid,
+                                                            requestUser.uid,
+                                                            false,
+                                                          );
+                                                        },
+                                                        icon: const Icon(
+                                                          Icons.close,
+                                                          color: AppColors.error,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        onPressed: () {
+                                                          context.read<ProfileCubit>().handleFollowRequest(
+                                                            user.uid,
+                                                            requestUser.uid,
+                                                            true,
+                                                          );
+                                                        },
+                                                        icon: const Icon(
+                                                          Icons.check,
+                                                          color: AppColors.success,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      }).toList(),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           const SizedBox(height: 24),
                           Container(
@@ -1137,6 +1393,56 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                   ],
                 ),
+              ),
+            ),
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: AppColors.surface,
+                selectedItemColor: AppColors.accent,
+                unselectedItemColor: AppColors.textSecondary,
+                selectedLabelStyle: GoogleFonts.poppins(
+                  color: AppColors.buttonPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: GoogleFonts.poppins(
+                  color: AppColors.buttonDisabled,
+                  fontWeight: FontWeight.w500,
+                ),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_rounded),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.search_rounded),
+                    label: 'Search',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.add_box_rounded),
+                    label: 'Post',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.cloud),
+                    label: 'Twitter',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_rounded),
+                    label: 'Profile',
+                  ),
+                ],
               ),
             ),
           );

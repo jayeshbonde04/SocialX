@@ -17,7 +17,6 @@ import 'package:socialx/features/notifications/presentation/pages/notifications_
 import 'package:socialx/features/posts/presentation/pages/upload_post_page.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
 import 'package:socialx/services/notifications/in_app_notification_service.dart';
-import 'package:socialx/themes/app_colors.dart';
 import 'package:socialx/themes/theme.dart';
 import 'package:socialx/themes/theme_cubit.dart';
 

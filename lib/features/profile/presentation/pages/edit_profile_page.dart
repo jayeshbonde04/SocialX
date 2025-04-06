@@ -650,6 +650,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
             
             const SizedBox(height: 24),
 
+            // Add privacy toggle
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Private Account',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Only approved followers can see your posts',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Switch(
+                    value: widget.user.isPrivate,
+                    onChanged: (bool value) async {
+                      await context.read<ProfileCubit>().updateProfile(
+                        uid: widget.user.uid,
+                        newIsPrivate: value,
+                      );
+                      // Refresh the profile after updating privacy setting
+                      if (context.mounted) {
+                        await context.read<ProfileCubit>().fetchUserProfile(widget.user.uid);
+                      }
+                    },
+                    activeColor: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Logout Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -693,7 +748,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             try {
                               await context.read<AuthCubit>().logout();
                               if (context.mounted) {
+                                // Close the dialog first
                                 Navigator.pop(context);
+                                // Navigate to auth page and remove all routes
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  '/',
+                                  (route) => false,
+                                );
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -701,7 +762,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   SnackBar(
                                     content: Text(
                                       'Failed to logout: ${e.toString()}',
-                                      style: bodyStyle,
+                                      style: bodyStyle.copyWith(
+                                        color: Colors.white,
+                                      ),
                                     ),
                                     backgroundColor: AppColors.error,
                                   ),

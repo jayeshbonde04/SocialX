@@ -5,7 +5,9 @@ class AppColors {
   // Primary Colors
   static const Color primary = Color(0xFF00BCD4); // Cyan
   static const Color secondary = Color(0xFF26C6DA); // Light Cyan
-  static const Color accent = Color(0xFF00BCD4); // Cyan
+  static const Color accent = Color(0xFF26C6DA); // Cyan
+  static const Color third = Color.fromARGB(255, 176, 228, 235); // Cyan
+
 
   // Background Colors
   static const Color background = Color(0xFFFFFFFF); // Pure white
@@ -14,7 +16,7 @@ class AppColors {
 
   // Text Colors
   static const Color textPrimary = Color(0xFF212121); // Near black
-  static const Color textSecondary = Color(0xFF757575); // Medium gray
+  static const Color textSecondary = Color.fromARGB(255, 12, 10, 10); // Medium gray
   static const Color textHint = Color(0xFFBDBDBD); // Light gray hint
 
   // Borders and Dividers
@@ -32,7 +34,7 @@ class AppColors {
   static const Color modalBackground = Color(0xFFFFFFFF); // White modal background
 
   // Interactive Colors
-  static const Color buttonPrimary = Color(0xFF00BCD4); // Cyan
+  static const Color buttonPrimary = Color(0xFF26C6DA); // Cyan
   static const Color buttonSecondary = Color(0xFFE0E0E0); // Light gray
   static const Color buttonDisabled = Color(0xFFBDBDBD); // Medium gray
 

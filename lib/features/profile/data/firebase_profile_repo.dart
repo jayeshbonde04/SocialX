@@ -29,6 +29,7 @@ class FirebaseProfileRepo implements ProfileRepo {
             profileImageUrl: userData['profileImageUrl'].toString(),
             followers: List<String>.from(userData['followers'] ?? []),
             following: List<String>.from(userData['following'] ?? []),
+            isPrivate: userData['isPrivate'] ?? false,
           );
         }
       }
@@ -50,7 +51,8 @@ class FirebaseProfileRepo implements ProfileRepo {
         'followers': updateProfile.followers,
         'following': updateProfile.following,
         'name': updateProfile.name,
-        'email': updateProfile.email, // Always include email in the update
+        'email': updateProfile.email,
+        'isPrivate': updateProfile.isPrivate,
       };
 
       await firebaseFirestore
@@ -79,9 +81,8 @@ class FirebaseProfileRepo implements ProfileRepo {
       final targetUserData = targetUserDoc.data()!;
       final currentUserData = currentUserDoc.data()!;
 
-      // Debug prints
-      print("Target user data: $targetUserData");
-      print("Current user data: $currentUserData");
+      // Check if target user's account is private
+      final isPrivateAccount = targetUserData['isPrivate'] ?? false;
 
       // Get current followers and following lists
       final targetFollowers =
@@ -89,60 +90,158 @@ class FirebaseProfileRepo implements ProfileRepo {
       final currentFollowing =
           List<String>.from(currentUserData['following'] ?? []);
 
-      // Debug prints
-      print("Target followers before: $targetFollowers");
-      print("Current following before: $currentFollowing");
+      // Get follow requests list
+      final followRequests = List<String>.from(targetUserData['followRequests'] ?? []);
 
       // Check if current user is already following target user
       final isFollowing = targetFollowers.contains(currentUserId);
 
-      // Update target user's followers
       if (isFollowing) {
+        // Unfollow logic remains the same
         targetFollowers.remove(currentUserId);
-      } else {
-        targetFollowers.add(currentUserId);
-      }
-
-      // Update current user's following
-      if (isFollowing) {
         currentFollowing.remove(targetUserId);
+        
+        // Update both users in Firestore
+        await Future.wait([
+          firebaseFirestore.collection('users').doc(targetUserId).update({
+            'followers': targetFollowers,
+          }),
+          firebaseFirestore.collection('users').doc(currentUserId).update({
+            'following': currentFollowing,
+          }),
+        ]);
       } else {
-        currentFollowing.add(targetUserId);
+        if (isPrivateAccount) {
+          // For private accounts, add to follow requests instead of directly following
+          if (!followRequests.contains(currentUserId)) {
+            followRequests.add(currentUserId);
+            
+            // Update target user's follow requests
+            await firebaseFirestore.collection('users').doc(targetUserId).update({
+              'followRequests': followRequests,
+            });
+
+            // Create follow request notification
+            final currentUserName = currentUserData['name'] ?? 'Someone';
+            await firebaseFirestore.collection('notifications').add({
+              'id': DateTime.now().millisecondsSinceEpoch.toString(),
+              'userId': targetUserId,
+              'actorId': currentUserId,
+              'type': 'follow_request',
+              'timestamp': FieldValue.serverTimestamp(),
+              'isRead': false,
+              'metadata': {
+                'actorName': currentUserName,
+              },
+            });
+          }
+        } else {
+          // For public accounts, follow directly
+          targetFollowers.add(currentUserId);
+          currentFollowing.add(targetUserId);
+          
+          // Update both users in Firestore
+          await Future.wait([
+            firebaseFirestore.collection('users').doc(targetUserId).update({
+              'followers': targetFollowers,
+            }),
+            firebaseFirestore.collection('users').doc(currentUserId).update({
+              'following': currentFollowing,
+            }),
+          ]);
+
+          // Create follow notification
+          final currentUserName = currentUserData['name'] ?? 'Someone';
+          await firebaseFirestore.collection('notifications').add({
+            'id': DateTime.now().millisecondsSinceEpoch.toString(),
+            'userId': targetUserId,
+            'actorId': currentUserId,
+            'type': 'follow',
+            'timestamp': FieldValue.serverTimestamp(),
+            'isRead': false,
+            'metadata': {
+              'actorName': currentUserName,
+            },
+          });
+        }
+      }
+    } catch (e) {
+      print("Error toggling follow: $e");
+      throw Exception(e);
+    }
+  }
+
+  @override
+  Future<void> handleFollowRequest(String targetUserId, String currentUserId, bool accept) async {
+    try {
+      // Get both users' documents
+      final targetUserDoc = await firebaseFirestore.collection('users').doc(targetUserId).get();
+      final currentUserDoc = await firebaseFirestore.collection('users').doc(currentUserId).get();
+
+      if (!targetUserDoc.exists || !currentUserDoc.exists) {
+        throw Exception('User not found');
       }
 
-      // Debug prints
-      print("Target followers after: $targetFollowers");
-      print("Current following after: $currentFollowing");
+      final targetUserData = targetUserDoc.data()!;
+      final currentUserData = currentUserDoc.data()!;
+
+      // Get current lists
+      final targetFollowers = List<String>.from(targetUserData['followers'] ?? []);
+      final currentFollowing = List<String>.from(currentUserData['following'] ?? []);
+      final followRequests = List<String>.from(targetUserData['followRequests'] ?? []);
+
+      // Remove from follow requests
+      followRequests.remove(currentUserId);
+
+      if (accept) {
+        // Add to followers/following
+        targetFollowers.add(currentUserId);
+        currentFollowing.add(targetUserId);
+
+        // Create follow notification
+        final targetUserName = targetUserData['name'] ?? 'Someone';
+        await firebaseFirestore.collection('notifications').add({
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'userId': currentUserId,
+          'actorId': targetUserId,
+          'type': 'follow_accepted',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'metadata': {
+            'actorName': targetUserName,
+          },
+        });
+      }
 
       // Update both users in Firestore
       await Future.wait([
         firebaseFirestore.collection('users').doc(targetUserId).update({
           'followers': targetFollowers,
+          'followRequests': followRequests,
         }),
         firebaseFirestore.collection('users').doc(currentUserId).update({
           'following': currentFollowing,
         }),
       ]);
-
-      // Create notification when user follows (not when unfollowing)
-      if (!isFollowing) {
-        // Get current user's name
-        final currentUserName = currentUserData['name'] ?? 'Someone';
-        
-        await firebaseFirestore.collection('notifications').add({
-          'id': DateTime.now().millisecondsSinceEpoch.toString(),
-          'userId': targetUserId,
-          'actorId': currentUserId,
-          'type': 'follow',
-          'timestamp': FieldValue.serverTimestamp(),
-          'isRead': false,
-          'metadata': {
-            'actorName': currentUserName,
-          },
-        });
-      }
     } catch (e) {
-      print("Error toggling follow: $e");
+      print("Error handling follow request: $e");
+      throw Exception(e);
+    }
+  }
+
+  @override
+  Future<List<String>> getFollowRequests(String userId) async {
+    try {
+      final userDoc = await firebaseFirestore.collection('users').doc(userId).get();
+      
+      if (!userDoc.exists) {
+        throw Exception('User not found');
+      }
+
+      final userData = userDoc.data()!;
+      return List<String>.from(userData['followRequests'] ?? []);
+    } catch (e) {
+      print("Error getting follow requests: $e");
       throw Exception(e);
     }
   }

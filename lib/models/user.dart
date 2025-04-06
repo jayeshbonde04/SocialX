@@ -19,12 +19,14 @@ class Userprofile{
   final String email;
   final String username;
   final String bio;
+  final bool isPrivate;
 
   Userprofile({required this.uid,
     required this.name,
     required this.email,
     required this.username,
-    required this.bio});
+    required this.bio,
+    this.isPrivate = false});
 
 /*
 firebase -> app
@@ -37,6 +39,7 @@ convert firestore document to a user profile (so we can use our app)
       email: doc['email'],
       username: doc['username'],
       bio: doc['bio'],
+      isPrivate: doc['isPrivate'] ?? false,
     );
 
   }
@@ -51,6 +54,7 @@ covert a user profile to a map(so we can store in firebase)
       'email': email,
       'username': username,
       'bio': bio,
+      'isPrivate': isPrivate,
     };
   }
 }

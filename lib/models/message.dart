@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum MessageType { text, image, audio }
+enum MessageStatus { pending, sent, delivered, seen }
 
 class Message {
   final String senderID;
@@ -11,6 +12,8 @@ class Message {
   final MessageType type;
   final String? mediaUrl;
   final int? audioDuration;
+  final MessageStatus status;
+  final Timestamp? seenAt;
 
   Message({
     required this.senderID,
@@ -21,6 +24,8 @@ class Message {
     this.type = MessageType.text,
     this.mediaUrl,
     this.audioDuration,
+    this.status = MessageStatus.sent,
+    this.seenAt,
   });
 
   //convert to a map
@@ -34,6 +39,8 @@ class Message {
       'type': type.toString(),
       'mediaUrl': mediaUrl,
       'audioDuration': audioDuration,
+      'status': status.toString(),
+      'seenAt': seenAt,
     };
   }
 
@@ -51,6 +58,11 @@ class Message {
       ),
       mediaUrl: map['mediaUrl'],
       audioDuration: map['audioDuration'],
+      status: MessageStatus.values.firstWhere(
+        (e) => e.toString() == map['status'],
+        orElse: () => MessageStatus.sent,
+      ),
+      seenAt: map['seenAt'],
     );
   }
 }

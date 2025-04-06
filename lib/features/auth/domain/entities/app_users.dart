@@ -5,6 +5,7 @@ class AppUsers {
   final List<String> followers;
   final List<String> following;
   final String profileImageUrl;
+  final bool isPrivate;
 
   AppUsers({
     required this.uid,
@@ -13,6 +14,7 @@ class AppUsers {
     this.followers = const [],
     this.following = const [],
     this.profileImageUrl = '',
+    this.isPrivate = false,
   });
 
   //convert app user to json
@@ -24,6 +26,7 @@ class AppUsers {
       'followers': followers,
       'following': following,
       'profileImageUrl': profileImageUrl,
+      'isPrivate': isPrivate,
     };
   }
 
@@ -36,6 +39,7 @@ class AppUsers {
       followers: List<String>.from(jsonUser['followers'] ?? []),
       following: List<String>.from(jsonUser['following'] ?? []),
       profileImageUrl: jsonUser['profileImageUrl'] ?? '',
+      isPrivate: jsonUser['isPrivate'] ?? false,
     );
   }
 }
