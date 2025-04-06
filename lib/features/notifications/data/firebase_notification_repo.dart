@@ -87,13 +87,29 @@ class FirebaseNotificationRepo implements NotificationRepo {
   @override
   Future<void> deleteNotification(String notificationId) async {
     try {
+      print('FirebaseNotificationRepo: Deleting notification: $notificationId');
+      
+      // First verify the notification exists
+      final notificationDoc = await _firestore
+          .collection('notifications')
+          .doc(notificationId)
+          .get();
+          
+      if (!notificationDoc.exists) {
+        print('FirebaseNotificationRepo: Notification $notificationId not found in Firestore');
+        return; // Silently return if notification doesn't exist
+      }
+      
+      // Delete the notification
       await _firestore
           .collection('notifications')
           .doc(notificationId)
           .delete();
+          
+      print('FirebaseNotificationRepo: Successfully deleted notification: $notificationId');
     } catch (e) {
-      print('Error deleting notification: $e');
-      rethrow;
+      print('FirebaseNotificationRepo: Error deleting notification: $e');
+      throw Exception('Failed to delete notification: $e');
     }
   }
 
@@ -130,6 +146,41 @@ class FirebaseNotificationRepo implements NotificationRepo {
     } catch (e) {
       print('FirebaseNotificationRepo: Error restoring notification: $e');
       rethrow;
+    }
+  }
+
+  @override
+  Future<void> updateNotificationType(String notificationId, NotificationType type) async {
+    try {
+      await _firestore.collection('notifications').doc(notificationId).update({
+        'type': type.toString().split('.').last,
+      });
+    } catch (e) {
+      throw Exception('Failed to update notification type: $e');
+    }
+  }
+
+  @override
+  Future<void> addFollower(String userId, String followerId) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      await userRef.update({
+        'followers': FieldValue.arrayUnion([followerId]),
+      });
+    } catch (e) {
+      throw Exception('Failed to add follower: $e');
+    }
+  }
+
+  @override
+  Future<void> addFollowing(String userId, String followingId) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      await userRef.update({
+        'following': FieldValue.arrayUnion([followingId]),
+      });
+    } catch (e) {
+      throw Exception('Failed to add following: $e');
     }
   }
 

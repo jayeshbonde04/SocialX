@@ -97,7 +97,7 @@ class FirebaseProfileRepo implements ProfileRepo {
       final isFollowing = targetFollowers.contains(currentUserId);
 
       if (isFollowing) {
-        // Unfollow logic remains the same
+        // Unfollow logic
         targetFollowers.remove(currentUserId);
         currentFollowing.remove(targetUserId);
         
@@ -110,9 +110,24 @@ class FirebaseProfileRepo implements ProfileRepo {
             'following': currentFollowing,
           }),
         ]);
+
+        // Create unfollow notification
+        final currentUserName = currentUserData['name'] ?? 'Someone';
+        await firebaseFirestore.collection('notifications').add({
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'userId': targetUserId,
+          'actorId': currentUserId,
+          'type': 'unfollow',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+          'metadata': {
+            'actorName': currentUserName,
+          },
+        });
       } else {
+        // Follow logic
         if (isPrivateAccount) {
-          // For private accounts, add to follow requests instead of directly following
+          // For private accounts, add to follow requests
           if (!followRequests.contains(currentUserId)) {
             followRequests.add(currentUserId);
             
@@ -127,7 +142,7 @@ class FirebaseProfileRepo implements ProfileRepo {
               'id': DateTime.now().millisecondsSinceEpoch.toString(),
               'userId': targetUserId,
               'actorId': currentUserId,
-              'type': 'follow_request',
+              'type': 'followRequest',
               'timestamp': FieldValue.serverTimestamp(),
               'isRead': false,
               'metadata': {
@@ -204,7 +219,7 @@ class FirebaseProfileRepo implements ProfileRepo {
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
           'userId': currentUserId,
           'actorId': targetUserId,
-          'type': 'follow_accepted',
+          'type': 'follow',
           'timestamp': FieldValue.serverTimestamp(),
           'isRead': false,
           'metadata': {

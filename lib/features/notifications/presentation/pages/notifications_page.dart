@@ -35,6 +35,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return '$actorName commented on your post';
       case app_notification.NotificationType.follow:
         return '$actorName started following you';
+      case app_notification.NotificationType.followRequest:
+        return '$actorName sent you a follow request';
       case app_notification.NotificationType.message:
         return '$actorName sent you a message';
       case app_notification.NotificationType.post:
@@ -50,6 +52,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.comment_rounded;
       case app_notification.NotificationType.follow:
         return Icons.person_add_rounded;
+      case app_notification.NotificationType.followRequest:
+        return Icons.person_add_outlined;
       case app_notification.NotificationType.message:
         return Icons.message_rounded;
       case app_notification.NotificationType.post:
@@ -65,6 +69,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Colors.blue;
       case app_notification.NotificationType.follow:
         return Colors.green;
+      case app_notification.NotificationType.followRequest:
+        return Colors.orange;
       case app_notification.NotificationType.message:
         return Colors.orange;
       case app_notification.NotificationType.post:
@@ -224,24 +230,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           
                       if (!context.mounted) return;
                       
+                      // Show undo snackbar
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(
-                                Icons.delete_outline_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Notification deleted',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                          content: Text(
+                            'Notification deleted',
+                            style: GoogleFonts.poppins(),
+                          ),
+                          action: SnackBarAction(
+                            label: 'Undo',
+                            onPressed: () {
+                              // Restore the notification
+                              context.read<NotificationCubit>().restoreNotification(notification);
+                            },
                           ),
                           backgroundColor: Colors.red.shade400,
                           behavior: SnackBarBehavior.floating,
@@ -253,52 +254,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         ),
                       );
                     },
-                    child: ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _getNotificationColor(notification.type)
-                              .withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _getNotificationIcon(notification.type),
-                          color: _getNotificationColor(notification.type),
-                        ),
-                      ),
-                      title: Text(
-                        _getNotificationMessage(notification),
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textPrimary,
-                          fontWeight:
-                              notification.isRead ? FontWeight.normal : FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(
-                        timeago.format(notification.timestamp),
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                      trailing: notification.isRead
-                          ? null
-                          : Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.accent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                      onTap: () {
-                        if (!notification.isRead) {
-                          context
-                              .read<NotificationCubit>()
-                              .markAsRead(notification.id);
-                        }
-                      },
-                    ),
+                    child: _buildNotificationTile(notification),
                   );
                 },
               ),
@@ -337,6 +293,136 @@ class _NotificationsPageState extends State<NotificationsPage> {
           return const SizedBox();
         },
       ),
+    );
+  }
+
+  Widget _buildNotificationTile(app_notification.Notification notification) {
+    final message = _getNotificationMessage(notification);
+    final icon = _getNotificationIcon(notification.type);
+    final color = _getNotificationColor(notification.type);
+    final timeAgo = timeago.format(notification.timestamp);
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(
+        message,
+        style: GoogleFonts.poppins(
+          color: AppColors.textPrimary,
+          fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+        ),
+      ),
+      subtitle: Text(
+        timeAgo,
+        style: GoogleFonts.poppins(
+          color: AppColors.textSecondary,
+          fontSize: 12,
+        ),
+      ),
+      trailing: notification.type == app_notification.NotificationType.followRequest
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    // Accept follow request
+                    context.read<NotificationCubit>().acceptFollowRequest(notification);
+                    
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Follow request accepted',
+                          style: GoogleFonts.poppins(),
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        margin: const EdgeInsets.all(16),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Accept',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () {
+                    // Reject follow request
+                    context.read<NotificationCubit>().rejectFollowRequest(notification);
+                    
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Follow request declined',
+                          style: GoogleFonts.poppins(),
+                        ),
+                        backgroundColor: Colors.red.shade400,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        margin: const EdgeInsets.all(16),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: BorderSide(color: AppColors.textPrimary.withOpacity(0.3)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Decline',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : notification.isRead
+              ? null
+              : Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+      onTap: () {
+        if (!notification.isRead) {
+          context.read<NotificationCubit>().markAsRead(notification.id);
+        }
+      },
     );
   }
 }

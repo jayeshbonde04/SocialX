@@ -20,6 +20,7 @@ import 'package:socialx/features/home/presentation/pages/home_page.dart';
 import 'package:socialx/features/search/presentation/pages/search_page.dart';
 import 'package:socialx/features/posts/presentation/pages/upload_post_page.dart';
 import 'package:socialx/features/posts/presentation/pages/twitter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Text styles
 final TextStyle titleStyle = GoogleFonts.poppins(
@@ -77,7 +78,7 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
 
     //get current user
-    getCurrentUser();
+    _initializeCurrentUser();
 
     //load user profile state
     profileCubit.fetchUserProfile(widget.uid);
@@ -86,9 +87,49 @@ class _ProfilePageState extends State<ProfilePage> {
     context.read<PostCubit>().fetchAllPosts();
   }
 
-  //get current user
-  void getCurrentUser() {
-    currentUser = authCubit.currentuser;
+  //initialize current user
+  Future<void> _initializeCurrentUser() async {
+    try {
+      // First try to get user from AuthCubit
+      currentUser = authCubit.currentuser;
+
+      // If currentUser is null, try to get it from Firebase Auth
+      if (currentUser == null) {
+        final firebaseUser = FirebaseAuth.instance.currentUser;
+        if (firebaseUser != null) {
+          // Get the user data from Firestore
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(firebaseUser.uid)
+              .get();
+
+          if (userDoc.exists) {
+            // Create AppUsers object from Firestore data
+            currentUser = AppUsers(
+              uid: firebaseUser.uid,
+              email: userDoc.get('email') ?? '',
+              name: userDoc.get('name') ?? 'User',
+              profileImageUrl: userDoc.get('profileImageUrl') ?? '',
+            );
+          } else {
+            // Create a basic AppUsers object if Firestore data doesn't exist
+            currentUser = AppUsers(
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? '',
+              name: firebaseUser.displayName ?? 'User',
+              profileImageUrl: firebaseUser.photoURL ?? '',
+            );
+          }
+          
+          // Update state to trigger rebuild
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      }
+    } catch (e) {
+      print('Error initializing current user: $e');
+    }
   }
 
   //toggle between photos and tweets
@@ -638,6 +679,145 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showCommentDialog(BuildContext context, Post post) async {
+    // Check if user is logged in
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please log in to comment on posts',
+            style: GoogleFonts.poppins(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Ensure we have the latest user data
+    await _initializeCurrentUser();
+    if (!mounted) return;
+
+    // Show comment dialog
+    final commentController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Add Comment',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: commentController,
+              decoration: InputDecoration(
+                hintText: 'Write your comment...',
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.accent),
+                ),
+              ),
+              style: TextStyle(color: AppColors.textPrimary),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              if (commentController.text.trim().isNotEmpty) {
+                context.read<PostCubit>()
+                    .addComment(
+                      post.id,
+                      currentUser!.uid,
+                      commentController.text.trim(),
+                    )
+                    .then((_) {
+                  Navigator.pop(context);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Comment added successfully',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      backgroundColor: AppColors.surface,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }).catchError((error) {
+                  Navigator.pop(context);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to add comment: $error',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      backgroundColor: AppColors.surface,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                });
+              }
+            },
+            child: Text(
+              'Post',
+              style: TextStyle(
+                color: AppColors.accent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProfileCubit, ProfileStates>(
@@ -816,7 +996,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 '@${user.email.split('@')[0]}',
                                 style: subtitleStyle,
                               ),
-                              if (user.isPrivate) ...[
+                              if (user.isPrivate && !isCurrentUser) ...[
                                 const SizedBox(width: 4),
                                 Icon(
                                   Icons.lock_outline_rounded,
@@ -942,27 +1122,30 @@ class _ProfilePageState extends State<ProfilePage> {
                             BlocBuilder<ProfileCubit, ProfileStates>(
                               builder: (context, state) {
                                 final isFollowing = user.followers.contains(currentUser?.uid);
-                                final hasPendingRequest = state is FollowRequestPending;
+                                final hasPendingRequest = state is FollowRequestSent || state is FollowRequestPending;
+                                final isPrivate = user.isPrivate;
                                 
                                 return Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
                                   child: ElevatedButton(
-                                    onPressed: isFollowing || hasPendingRequest
-                                        ? null
-                                        : () {
-                                            if (user.isPrivate) {
-                                              context.read<ProfileCubit>().toggleFollow(
-                                                user.uid,
-                                                currentUser!.uid,
-                                              );
-                                            } else {
-                                              context.read<ProfileCubit>().toggleFollow(
-                                                user.uid,
-                                                currentUser!.uid,
-                                              );
-                                            }
-                                          },
+                                    onPressed: isFollowing
+                                        ? () {
+                                            // Unfollow
+                                            context.read<ProfileCubit>().toggleFollow(
+                                              user.uid,
+                                              currentUser!.uid,
+                                            );
+                                          }
+                                        : hasPendingRequest
+                                            ? null
+                                            : () {
+                                                // Follow or send request
+                                                context.read<ProfileCubit>().toggleFollow(
+                                                  user.uid,
+                                                  currentUser!.uid,
+                                                );
+                                              },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: isFollowing
                                           ? AppColors.surface
@@ -979,147 +1162,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                       isFollowing
                                           ? 'Following'
                                           : hasPendingRequest
-                                              ? 'Request Sent'
-                                              : user.isPrivate
-                                                  ? 'Follow Request'
+                                              ? 'Requested'
+                                              : isPrivate
+                                                  ? 'Request'
                                                   : 'Follow',
                                       style: GoogleFonts.poppins(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
-                          const SizedBox(height: 24),
-                          // Show follow requests for account owner
-                          if (user.uid == FirebaseAuth.instance.currentUser?.uid)
-                            FutureBuilder<List<String>>(
-                              future: context.read<ProfileCubit>().getFollowRequests(user.uid),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                }
-                                
-                                final followRequests = snapshot.data ?? [];
-                                if (followRequests.isEmpty) {
-                                  return const SizedBox.shrink();
-                                }
-                                
-                                return Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: AppColors.primary.withOpacity(0.1),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Follow Requests',
-                                        style: GoogleFonts.poppins(
-                                          color: AppColors.textPrimary,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ...followRequests.map((requestUserId) {
-                                        return FutureBuilder<ProfileUser?>(
-                                          future: context.read<ProfileCubit>().getUserProfile(requestUserId),
-                                          builder: (context, snapshot) {
-                                            if (snapshot.connectionState == ConnectionState.waiting) {
-                                              return const Center(
-                                                child: CircularProgressIndicator(),
-                                              );
-                                            }
-                                            
-                                            final requestUser = snapshot.data;
-                                            if (requestUser == null) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            
-                                            return Padding(
-                                              padding: const EdgeInsets.only(bottom: 12),
-                                              child: Row(
-                                                children: [
-                                                  CircleAvatar(
-                                                    radius: 20,
-                                                    backgroundImage: requestUser.profileImageUrl.isNotEmpty
-                                                        ? NetworkImage(requestUser.profileImageUrl)
-                                                        : null,
-                                                    child: requestUser.profileImageUrl.isEmpty
-                                                        ? const Icon(Icons.person)
-                                                        : null,
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Text(
-                                                          requestUser.name,
-                                                          style: GoogleFonts.poppins(
-                                                            color: AppColors.textPrimary,
-                                                            fontSize: 16,
-                                                            fontWeight: FontWeight.w500,
-                                                          ),
-                                                        ),
-                                                        Text(
-                                                          '@${requestUser.name.toLowerCase()}',
-                                                          style: GoogleFonts.poppins(
-                                                            color: AppColors.textSecondary,
-                                                            fontSize: 14,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      IconButton(
-                                                        onPressed: () {
-                                                          context.read<ProfileCubit>().handleFollowRequest(
-                                                            user.uid,
-                                                            requestUser.uid,
-                                                            false,
-                                                          );
-                                                        },
-                                                        icon: const Icon(
-                                                          Icons.close,
-                                                          color: AppColors.error,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        onPressed: () {
-                                                          context.read<ProfileCubit>().handleFollowRequest(
-                                                            user.uid,
-                                                            requestUser.uid,
-                                                            true,
-                                                          );
-                                                        },
-                                                        icon: const Icon(
-                                                          Icons.check,
-                                                          color: AppColors.success,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        );
-                                      }).toList(),
-                                    ],
                                   ),
                                 );
                               },
@@ -1232,6 +1283,30 @@ class _ProfilePageState extends State<ProfilePage> {
                                     post.imageUrl.isNotEmpty)
                                 .toList();
 
+                            // Check if user is private and not following
+                            final isPrivate = user.isPrivate;
+                            final isFollowing = user.followers.contains(currentUser?.uid);
+                            final hasPendingRequest = state is FollowRequestSent || state is FollowRequestPending;
+                            final isCurrentUser = user.uid == currentUser?.uid;
+
+                            // If private account and not following and not the owner, show message
+                            if (isPrivate && !isFollowing && !hasPendingRequest && !isCurrentUser) {
+                              return _buildEmptyState(
+                                icon: Icons.lock_outline_rounded,
+                                title: 'Private Account',
+                                subtitle: 'Follow this account to see their photos',
+                              );
+                            }
+
+                            // If private account and request pending and not the owner
+                            if (isPrivate && !isFollowing && hasPendingRequest && !isCurrentUser) {
+                              return _buildEmptyState(
+                                icon: Icons.pending_outlined,
+                                title: 'Request Pending',
+                                subtitle: 'Your follow request is waiting for approval',
+                              );
+                            }
+
                             if (userPosts.isEmpty) {
                               return _buildEmptyState(
                                 icon: Icons.photo_library_outlined,
@@ -1283,55 +1358,136 @@ class _ProfilePageState extends State<ProfilePage> {
                                           right: 8,
                                           child: Row(
                                             children: [
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.6),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.favorite,
-                                                      color: post.likes.contains(currentUser?.uid) ? AppColors.error : Colors.white,
-                                                      size: 16,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      post.likes.length.toString(),
-                                                      style: GoogleFonts.poppins(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
+                                              GestureDetector(
+                                                onTap: () {
+                                                  // Check if user is logged in
+                                                  if (currentUser == null) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'Please log in to like posts',
+                                                          style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                                        ),
+                                                        backgroundColor: AppColors.surface,
+                                                        behavior: SnackBarBehavior.floating,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(10),
+                                                        ),
+                                                        margin: const EdgeInsets.all(16),
+                                                        duration: const Duration(seconds: 2),
                                                       ),
-                                                    ),
-                                                  ],
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  // Ensure we have the latest user data
+                                                  _initializeCurrentUser().then((_) {
+                                                    if (!mounted) return;
+                                                    
+                                                    // Toggle like
+                                                    context.read<PostCubit>().toggleLikedPost(
+                                                      post.id,
+                                                      currentUser!.uid,
+                                                    ).then((_) {
+                                                      if (!mounted) return;
+                                                      
+                                                      // Success message
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            post.likes.contains(currentUser!.uid)
+                                                                ? 'Post unliked'
+                                                                : 'Post liked',
+                                                            style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                                          ),
+                                                          backgroundColor: AppColors.surface,
+                                                          behavior: SnackBarBehavior.floating,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(10),
+                                                          ),
+                                                          margin: const EdgeInsets.all(16),
+                                                          duration: const Duration(seconds: 2),
+                                                        ),
+                                                      );
+                                                    }).catchError((error) {
+                                                      if (!mounted) return;
+                                                      
+                                                      // Error message
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            'Failed to update like: $error',
+                                                            style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                                          ),
+                                                          backgroundColor: AppColors.surface,
+                                                          behavior: SnackBarBehavior.floating,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(10),
+                                                          ),
+                                                          margin: const EdgeInsets.all(16),
+                                                          duration: const Duration(seconds: 2),
+                                                        ),
+                                                      );
+                                                    });
+                                                  });
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.6),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        post.likes.contains(currentUser?.uid)
+                                                            ? Icons.favorite
+                                                            : Icons.favorite_border,
+                                                        color: post.likes.contains(currentUser?.uid)
+                                                            ? AppColors.error
+                                                            : Colors.white,
+                                                        size: 16,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        post.likes.length.toString(),
+                                                        style: GoogleFonts.poppins(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.6),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.chat_bubble_outline,
-                                                      color: Colors.white,
-                                                      size: 16,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      post.comment.length.toString(),
-                                                      style: GoogleFonts.poppins(
+                                              GestureDetector(
+                                                onTap: () => _showCommentDialog(context, post),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.6),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.chat_bubble_outline,
                                                         color: Colors.white,
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
+                                                        size: 16,
                                                       ),
-                                                    ),
-                                                  ],
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        post.comment.length.toString(),
+                                                        style: GoogleFonts.poppins(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -1359,6 +1515,30 @@ class _ProfilePageState extends State<ProfilePage> {
                                     post.type == PostType.tweet)
                                 .toList();
 
+                            // Check if user is private and not following
+                            final isPrivate = user.isPrivate;
+                            final isFollowing = user.followers.contains(currentUser?.uid);
+                            final hasPendingRequest = state is FollowRequestSent || state is FollowRequestPending;
+                            final isCurrentUser = user.uid == currentUser?.uid;
+
+                            // If private account and not following and not the owner, show message
+                            if (isPrivate && !isFollowing && !hasPendingRequest && !isCurrentUser) {
+                              return _buildEmptyState(
+                                icon: Icons.lock_outline_rounded,
+                                title: 'Private Account',
+                                subtitle: 'Follow this account to see their tweets',
+                              );
+                            }
+
+                            // If private account and request pending and not the owner
+                            if (isPrivate && !isFollowing && hasPendingRequest && !isCurrentUser) {
+                              return _buildEmptyState(
+                                icon: Icons.pending_outlined,
+                                title: 'Request Pending',
+                                subtitle: 'Your follow request is waiting for approval',
+                              );
+                            }
+
                             if (userPosts.isEmpty) {
                               return _buildEmptyState(
                                 icon: Icons.chat_bubble_outline_rounded,
@@ -1377,10 +1557,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 16),
                                   child: PostTile(
-                                  post: post,
-                                  onDeletePressed: () {
+                                    post: post,
+                                    onDeletePressed: () {
                                       context.read<PostCubit>().deletePost(post.id);
-                                  },
+                                    },
                                   ),
                                 );
                               },

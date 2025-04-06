@@ -8,4 +8,7 @@ abstract class NotificationRepo {
   Future<void> deleteNotification(String notificationId);
   Future<void> deleteAllNotifications(String userId);
   Future<void> restoreNotification(Notification notification);
+  Future<void> updateNotificationType(String notificationId, NotificationType type);
+  Future<void> addFollower(String userId, String followerId);
+  Future<void> addFollowing(String userId, String followingId);
 }

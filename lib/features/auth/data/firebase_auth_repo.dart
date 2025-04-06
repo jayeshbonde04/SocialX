@@ -129,8 +129,11 @@ class FirebaseAuthRepo implements AuthRepo {
           throw Exception('Failed to reauthenticate user. Please check your password and try again.');
         }
 
-        // Use the comprehensive deletion method from DatabaseService
+        // Use the comprehensive deletion method from DatabaseService to clean up data
         await _databaseService.deleteAccount();
+        
+        // Finally, delete the Firebase Authentication user account
+        await user.delete();
       }
     } catch (e) {
       print('Error deleting account: $e');

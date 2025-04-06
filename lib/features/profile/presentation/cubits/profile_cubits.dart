@@ -147,13 +147,26 @@ class ProfileCubit extends Cubit<ProfileStates> {
         return;
       }
       
-      if (targetUser.isPrivate) {
+      // Check if already following
+      final isFollowing = targetUser.followers.contains(currentUserId);
+      
+      if (isFollowing) {
+        // Unfollow logic
+        await profileRepo.toggleFollow(targetUserId, currentUserId);
+        emit(ProfileSuccess("Unfollowed ${targetUser.name}"));
+        // Refresh the profile to show updated state
+        await fetchUserProfile(targetUserId);
+      } else if (targetUser.isPrivate) {
         // For private accounts, send follow request
         await profileRepo.toggleFollow(targetUserId, currentUserId);
         emit(FollowRequestSent("Follow request sent to ${targetUser.name}"));
+        // Refresh the profile to show updated state
+        await fetchUserProfile(targetUserId);
       } else {
         // For public accounts, follow directly
         await profileRepo.toggleFollow(targetUserId, currentUserId);
+        emit(ProfileSuccess("Following ${targetUser.name}"));
+        // Refresh the target user's profile to get updated followers list
         await fetchUserProfile(targetUserId);
       }
     } catch (e) {

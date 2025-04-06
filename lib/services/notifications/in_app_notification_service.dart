@@ -145,6 +145,8 @@ class InAppNotificationService {
         return 'New Comment';
       case app_notification.NotificationType.follow:
         return 'New Follower';
+      case app_notification.NotificationType.followRequest:
+        return 'Follow Request';
       case app_notification.NotificationType.message:
         return 'New Message';
       case app_notification.NotificationType.post:
@@ -162,6 +164,8 @@ class InAppNotificationService {
         return '$actorName commented on your post';
       case app_notification.NotificationType.follow:
         return '$actorName started following you';
+      case app_notification.NotificationType.followRequest:
+        return '$actorName sent you a follow request';
       case app_notification.NotificationType.message:
         return '$actorName sent you a message';
       case app_notification.NotificationType.post:
@@ -177,6 +181,8 @@ class InAppNotificationService {
         return Colors.cyan;
       case app_notification.NotificationType.follow:
         return Colors.green;
+      case app_notification.NotificationType.followRequest:
+        return Colors.orange;
       case app_notification.NotificationType.message:
         return Colors.cyan;
       case app_notification.NotificationType.post:
@@ -192,6 +198,8 @@ class InAppNotificationService {
         return Icons.comment_rounded;
       case app_notification.NotificationType.follow:
         return Icons.person_add_rounded;
+      case app_notification.NotificationType.followRequest:
+        return Icons.person_add_outlined;
       case app_notification.NotificationType.message:
         return Icons.message_rounded;
       case app_notification.NotificationType.post:

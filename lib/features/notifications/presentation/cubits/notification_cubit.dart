@@ -5,6 +5,7 @@ import 'package:socialx/features/notifications/domain/repos/notification_repo.da
 import 'package:socialx/features/notifications/presentation/cubits/notification_states.dart';
 import 'package:socialx/services/notifications/in_app_notification_service.dart';
 import 'package:socialx/services/notifications/local_notification_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NotificationCubit extends Cubit<NotificationState> {
   final NotificationRepo _notificationRepo;
@@ -148,7 +149,99 @@ class NotificationCubit extends Cubit<NotificationState> {
     try {
       await _notificationRepo.markAsRead(notificationId);
     } catch (e) {
-      emit(NotificationError(e.toString()));
+      print('Error marking notification as read: $e');
+    }
+  }
+
+  Future<void> acceptFollowRequest(Notification notification) async {
+    try {
+      print('NotificationCubit: Accepting follow request from ${notification.actorId}');
+      
+      // First, check if the notification exists in Firestore
+      final notificationDoc = await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(notification.id)
+          .get();
+      
+      if (!notificationDoc.exists) {
+        print('NotificationCubit: Notification ${notification.id} not found in Firestore');
+        // If the notification doesn't exist, we'll still proceed with the follow action
+        // but we'll skip updating the notification type
+      } else {
+        // Update the notification type to follow
+        await _notificationRepo.updateNotificationType(notification.id, NotificationType.follow);
+      }
+      
+      // Add the user to followers list
+      await _notificationRepo.addFollower(notification.userId, notification.actorId);
+      
+      // Add the user to following list
+      await _notificationRepo.addFollowing(notification.actorId, notification.userId);
+      
+      // Create a new notification for the accepted follow
+      final followNotification = Notification(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: notification.actorId,
+        actorId: notification.userId,
+        type: NotificationType.follow,
+        timestamp: DateTime.now(),
+        metadata: {'actorName': notification.metadata?['actorName']},
+      );
+      
+      await _notificationRepo.createNotification(followNotification);
+      
+      // Update the UI to reflect the changes
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        final updatedNotifications = currentState.notifications.map((n) {
+          if (n.id == notification.id) {
+            return n.copyWith(type: NotificationType.follow);
+          }
+          return n;
+        }).toList();
+        
+        emit(NotificationLoaded(updatedNotifications));
+      }
+      
+      print('NotificationCubit: Follow request accepted successfully');
+    } catch (e) {
+      print('NotificationCubit: Error accepting follow request: $e');
+      emit(NotificationError('Failed to accept follow request: $e'));
+    }
+  }
+
+  Future<void> rejectFollowRequest(Notification notification) async {
+    try {
+      print('NotificationCubit: Rejecting follow request from ${notification.actorId}');
+      
+      // First, check if the notification exists in Firestore
+      final notificationDoc = await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(notification.id)
+          .get();
+      
+      if (!notificationDoc.exists) {
+        print('NotificationCubit: Notification ${notification.id} not found in Firestore');
+        // If the notification doesn't exist, we'll still update the UI
+      } else {
+        // Delete the follow request notification
+        await _notificationRepo.deleteNotification(notification.id);
+      }
+      
+      // Update the UI to reflect the changes
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        final updatedNotifications = currentState.notifications
+            .where((n) => n.id != notification.id)
+            .toList();
+        
+        emit(NotificationLoaded(updatedNotifications));
+      }
+      
+      print('NotificationCubit: Follow request rejected successfully');
+    } catch (e) {
+      print('NotificationCubit: Error rejecting follow request: $e');
+      emit(NotificationError('Failed to reject follow request: $e'));
     }
   }
 
@@ -168,29 +261,56 @@ class NotificationCubit extends Cubit<NotificationState> {
 
   Future<void> deleteNotification(String notificationId) async {
     try {
-      // Get current notifications
+      print('NotificationCubit: Deleting notification: $notificationId');
+      
+      // First delete from Firebase
+      await _notificationRepo.deleteNotification(notificationId);
+      print('NotificationCubit: Successfully deleted notification from Firebase: $notificationId');
+      
+      // Then update UI state
       if (state is NotificationLoaded) {
         final currentState = state as NotificationLoaded;
         final updatedNotifications = currentState.notifications
             .where((notification) => notification.id != notificationId)
             .toList();
         
-        // Update state immediately before repository call
         emit(NotificationLoaded(updatedNotifications));
-        
-        // Then delete from repository
-        await _notificationRepo.deleteNotification(notificationId);
+        print('NotificationCubit: Successfully updated UI state after deletion');
       }
     } catch (e) {
+      print('NotificationCubit: Error deleting notification: $e');
       emit(NotificationError('Failed to delete notification: $e'));
+      
+      // Refresh notifications to ensure UI is in sync with backend
+      refreshNotifications();
     }
   }
 
   Future<void> restoreNotification(Notification notification) async {
     try {
+      print('NotificationCubit: Restoring notification: ${notification.id}');
+      
+      // First restore in repository
       await _notificationRepo.restoreNotification(notification);
+      
+      // Then update the UI state
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        final updatedNotifications = List<Notification>.from(currentState.notifications)
+          ..add(notification);
+        
+        // Sort notifications by timestamp to maintain order
+        updatedNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        
+        emit(NotificationLoaded(updatedNotifications));
+        print('NotificationCubit: Successfully restored notification: ${notification.id}');
+      }
     } catch (e) {
+      print('NotificationCubit: Error restoring notification: $e');
       emit(NotificationError('Failed to restore notification: $e'));
+      
+      // Refresh notifications to ensure UI is in sync with backend
+      refreshNotifications();
     }
   }
 

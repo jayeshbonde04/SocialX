@@ -155,6 +155,8 @@ class LocalNotificationService {
         return Colors.blue;
       case app_notification.NotificationType.follow:
         return Colors.green;
+      case app_notification.NotificationType.followRequest:
+        return Colors.orange;
       case app_notification.NotificationType.message:
         return Colors.orange;
       case app_notification.NotificationType.post:

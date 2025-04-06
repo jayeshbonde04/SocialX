@@ -4,6 +4,7 @@ enum NotificationType {
   like,
   comment,
   follow,
+  followRequest,
   message,
   post,
 }

@@ -7,11 +7,12 @@ import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/posts/presentation/components/comment_tile.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/profile/presentation/pages/profile_page.dart';
-import '../../domain/entities/post.dart';
-import '../../../profile/domain/entities/profile_user.dart';
-import '../../../profile/presentation/cubits/profile_cubits.dart';
+import 'package:socialx/features/posts/domain/entities/post.dart';
+import 'package:socialx/features/profile/domain/entities/profile_user.dart';
+import 'package:socialx/features/profile/presentation/cubits/profile_cubits.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:socialx/themes/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Dark mode color scheme with lighter shades
 const Color primaryColor = Color(0xFF1E293B); // Lighter dark blue-gray
@@ -62,7 +63,23 @@ class _PostTileState extends State<PostTile> {
   void getCurrentUser() {
     final authCubit = context.read<AuthCubit>();
     currentUser = authCubit.currentuser;
-    isOwnPost = (widget.post.userId == currentUser!.uid);
+    
+    if (currentUser == null) {
+      // If currentUser is null, try to get it from Firebase Auth
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        // Create a temporary AppUsers object with the Firebase user data
+        currentUser = AppUsers(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? '',
+          name: firebaseUser.displayName ?? 'User',
+          profileImageUrl: firebaseUser.photoURL ?? '',
+        );
+      }
+    }
+    
+    // Only set isOwnPost if we have a currentUser
+    isOwnPost = currentUser != null && (widget.post.userId == currentUser!.uid);
   }
 
   Future<void> fetchPostUser() async {
@@ -84,16 +101,20 @@ class _PostTileState extends State<PostTile> {
 
     try {
       await profileCubit.toggleFollow(postUser!.uid, currentUser!.uid);
+      // Refresh the post user data after toggling follow
+      await fetchPostUser();
     } catch (e) {
       // Revert on error
       setState(() {
         isFollowing = !isFollowing;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Failed to ${isFollowing ? 'follow' : 'unfollow'}: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Failed to ${isFollowing ? 'follow' : 'unfollow'}: $e')),
+        );
+      }
     }
   }
 
@@ -103,6 +124,25 @@ class _PostTileState extends State<PostTile> {
 
   //user tapped like button
   void toggleLikePost() {
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please log in to like posts',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     //current like status
     final isLiked = widget.post.likes.contains(currentUser!.uid);
 
@@ -127,6 +167,23 @@ class _PostTileState extends State<PostTile> {
           widget.post.likes.remove(currentUser!.uid); // revert like
         }
       });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update like: $error',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     });
   }
 
@@ -473,6 +530,137 @@ class _PostTileState extends State<PostTile> {
     });
   }
 
+  void _showCommentDialog() {
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please log in to comment on posts',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final commentController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Add Comment',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: commentController,
+              decoration: InputDecoration(
+                hintText: 'Write your comment...',
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.accent),
+                ),
+              ),
+              style: TextStyle(color: AppColors.textPrimary),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              if (commentController.text.trim().isNotEmpty) {
+                postCubit
+                    .addComment(
+                      widget.post.id,
+                      currentUser!.uid,
+                      commentController.text.trim(),
+                    )
+                    .then((_) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Comment added successfully',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      backgroundColor: AppColors.surface,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }).catchError((error) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to add comment: $error',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      backgroundColor: AppColors.surface,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                });
+              }
+            },
+            child: Text(
+              'Post',
+              style: TextStyle(
+                color: AppColors.accent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -690,7 +878,7 @@ class _PostTileState extends State<PostTile> {
                   icon: Icons.chat_bubble_outline,
                   color: AppColors.textSecondary,
                   count: widget.post.comment.length,
-                  onTap: openCommentBox,
+                  onTap: _showCommentDialog,
                 ),
                 const SizedBox(width: 24),
                 // Share Button
