@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:socialx/features/notifications/domain/entities/notification.dart';
 import 'package:socialx/features/notifications/domain/repos/notification_repo.dart';
@@ -6,6 +7,8 @@ import 'package:socialx/features/notifications/presentation/cubits/notification_
 import 'package:socialx/services/notifications/in_app_notification_service.dart';
 import 'package:socialx/services/notifications/local_notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationCubit extends Cubit<NotificationState> {
   final NotificationRepo _notificationRepo;
@@ -13,8 +16,50 @@ class NotificationCubit extends Cubit<NotificationState> {
   StreamSubscription<List<Notification>>? _notificationSubscription;
   final InAppNotificationService _inAppNotificationService = InAppNotificationService();
   final LocalNotificationService _localNotificationService = LocalNotificationService();
+  Set<String> _displayedNotificationIds = {};
+  static const String _displayedNotificationsKey = 'displayed_notifications';
 
-  NotificationCubit(this._notificationRepo) : super(NotificationInitial());
+  NotificationCubit(this._notificationRepo) : super(NotificationInitial()) {
+    _loadDisplayedNotifications();
+  }
+
+  // Load displayed notification IDs from shared preferences
+  Future<void> _loadDisplayedNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final displayedNotificationsJson = prefs.getString(_displayedNotificationsKey);
+      if (displayedNotificationsJson != null) {
+        final List<dynamic> displayedNotificationsList = json.decode(displayedNotificationsJson);
+        _displayedNotificationIds = Set<String>.from(displayedNotificationsList);
+        print('NotificationCubit: Loaded ${_displayedNotificationIds.length} displayed notifications');
+      }
+    } catch (e) {
+      print('NotificationCubit: Error loading displayed notifications: $e');
+    }
+  }
+
+  // Save displayed notification IDs to shared preferences
+  Future<void> _saveDisplayedNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final displayedNotificationsJson = json.encode(_displayedNotificationIds.toList());
+      await prefs.setString(_displayedNotificationsKey, displayedNotificationsJson);
+      print('NotificationCubit: Saved ${_displayedNotificationIds.length} displayed notifications');
+    } catch (e) {
+      print('NotificationCubit: Error saving displayed notifications: $e');
+    }
+  }
+
+  // Mark a notification as displayed
+  Future<void> _markNotificationAsDisplayed(String notificationId) async {
+    _displayedNotificationIds.add(notificationId);
+    await _saveDisplayedNotifications();
+  }
+
+  // Check if a notification has been displayed
+  bool _hasNotificationBeenDisplayed(String notificationId) {
+    return _displayedNotificationIds.contains(notificationId);
+  }
 
   @override
   Future<void> close() async {
@@ -81,15 +126,27 @@ class NotificationCubit extends Cubit<NotificationState> {
               return;
             }
             
-            // Show in-app notifications for unread notifications
-            for (final notification in notifications.where((n) => !n.isRead)) {
-              try {
-                _inAppNotificationService.showNotification(notification);
-                await _localNotificationService.showNotification(notification);
-              } catch (e) {
-                print('NotificationCubit: Error showing notification: $e');
-                // Continue processing other notifications even if one fails
-                continue;
+            // Verify that these notifications belong to the current user
+            final currentUser = FirebaseAuth.instance.currentUser;
+            if (currentUser != null && currentUser.uid == userId) {
+              // Show in-app notifications for unread notifications that haven't been displayed yet
+              for (final notification in notifications.where((n) => !n.isRead)) {
+                // Skip if this notification has already been displayed
+                if (_hasNotificationBeenDisplayed(notification.id)) {
+                  print('NotificationCubit: Skipping already displayed notification: ${notification.id}');
+                  continue;
+                }
+                
+                try {
+                  _inAppNotificationService.showNotification(notification);
+                  await _localNotificationService.showNotification(notification);
+                  // Mark as displayed after showing
+                  await _markNotificationAsDisplayed(notification.id);
+                } catch (e) {
+                  print('NotificationCubit: Error showing notification: $e');
+                  // Continue processing other notifications even if one fails
+                  continue;
+                }
               }
             }
             
@@ -133,10 +190,21 @@ class NotificationCubit extends Cubit<NotificationState> {
       print('NotificationCubit: Creating notification: ${notification.id} for user: ${notification.userId}');
       await _notificationRepo.createNotification(notification);
       
-      // Show in-app notification immediately
-      // Show both in-app and system notifications
+      // Only show notifications if the current user is the intended recipient
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && currentUser.uid == notification.userId) {
+        // Skip if this notification has already been displayed
+        if (_hasNotificationBeenDisplayed(notification.id)) {
+          print('NotificationCubit: Skipping already displayed notification: ${notification.id}');
+          return;
+        }
+        
+        // Show both in-app and system notifications only to the recipient
         _inAppNotificationService.showNotification(notification);
         await _localNotificationService.showNotification(notification);
+        // Mark as displayed after showing
+        await _markNotificationAsDisplayed(notification.id);
+      }
       
       print('NotificationCubit: Notification created successfully');
     } catch (e) {
@@ -148,6 +216,8 @@ class NotificationCubit extends Cubit<NotificationState> {
   Future<void> markAsRead(String notificationId) async {
     try {
       await _notificationRepo.markAsRead(notificationId);
+      // Also mark as displayed to prevent showing again
+      await _markNotificationAsDisplayed(notificationId);
     } catch (e) {
       print('Error marking notification as read: $e');
     }
@@ -251,6 +321,15 @@ class NotificationCubit extends Cubit<NotificationState> {
       await _notificationRepo.markAllAsRead(userId);
       print('NotificationCubit: Successfully marked all notifications as read');
       
+      // Mark all current notifications as displayed
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        for (final notification in currentState.notifications) {
+          await _markNotificationAsDisplayed(notification.id);
+        }
+        print('NotificationCubit: Marked all notifications as displayed');
+      }
+      
       // Refresh notifications to update the UI
       refreshNotifications();
     } catch (e) {
@@ -263,11 +342,24 @@ class NotificationCubit extends Cubit<NotificationState> {
     try {
       print('NotificationCubit: Deleting notification: $notificationId');
       
-      // First delete from Firebase
+      // Store the notification before deletion for potential restoration
+      Notification? notificationToRestore;
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        try {
+          notificationToRestore = currentState.notifications.firstWhere(
+            (n) => n.id == notificationId,
+          );
+        } catch (e) {
+          print('NotificationCubit: Notification $notificationId not found in current state');
+        }
+      }
+      
+      // First delete from Firebase to ensure data consistency
       await _notificationRepo.deleteNotification(notificationId);
       print('NotificationCubit: Successfully deleted notification from Firebase: $notificationId');
       
-      // Then update UI state
+      // Then update UI state after successful deletion
       if (state is NotificationLoaded) {
         final currentState = state as NotificationLoaded;
         final updatedNotifications = currentState.notifications
@@ -275,14 +367,22 @@ class NotificationCubit extends Cubit<NotificationState> {
             .toList();
         
         emit(NotificationLoaded(updatedNotifications));
-        print('NotificationCubit: Successfully updated UI state after deletion');
+        print('NotificationCubit: Successfully updated UI state');
       }
+      
     } catch (e) {
       print('NotificationCubit: Error deleting notification: $e');
-      emit(NotificationError('Failed to delete notification: $e'));
       
-      // Refresh notifications to ensure UI is in sync with backend
-      refreshNotifications();
+      // If there was an error, refresh notifications to ensure UI is in sync with backend
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        if (currentState.notifications.isNotEmpty) {
+          final userId = currentState.notifications.first.userId;
+          await initializeNotifications(userId);
+        }
+      }
+      
+      emit(NotificationError('Failed to delete notification: $e'));
     }
   }
 
@@ -292,10 +392,20 @@ class NotificationCubit extends Cubit<NotificationState> {
       
       // First restore in repository
       await _notificationRepo.restoreNotification(notification);
+      print('NotificationCubit: Successfully restored notification in repository');
       
       // Then update the UI state
       if (state is NotificationLoaded) {
         final currentState = state as NotificationLoaded;
+        
+        // Check if notification already exists in the list
+        final exists = currentState.notifications.any((n) => n.id == notification.id);
+        if (exists) {
+          print('NotificationCubit: Notification ${notification.id} already exists in UI state');
+          return;
+        }
+        
+        // Create a new list with the restored notification
         final updatedNotifications = List<Notification>.from(currentState.notifications)
           ..add(notification);
         
@@ -303,22 +413,58 @@ class NotificationCubit extends Cubit<NotificationState> {
         updatedNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         
         emit(NotificationLoaded(updatedNotifications));
-        print('NotificationCubit: Successfully restored notification: ${notification.id}');
+        print('NotificationCubit: Successfully restored notification in UI: ${notification.id}');
+      } else {
+        // If not in loaded state, initialize notifications
+        print('NotificationCubit: Current state is not NotificationLoaded, initializing notifications');
+        await initializeNotifications(notification.userId);
       }
     } catch (e) {
       print('NotificationCubit: Error restoring notification: $e');
       emit(NotificationError('Failed to restore notification: $e'));
       
       // Refresh notifications to ensure UI is in sync with backend
-      refreshNotifications();
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        if (currentState.notifications.isNotEmpty) {
+          final userId = currentState.notifications.first.userId;
+          await initializeNotifications(userId);
+        }
+      }
     }
   }
 
   Future<void> deleteAllNotifications(String userId) async {
     try {
+      print('NotificationCubit: Deleting all notifications for user: $userId');
+      
+      // First update UI state to provide immediate feedback
+      if (state is NotificationLoaded) {
+        emit(NotificationLoaded([]));
+        print('NotificationCubit: Updated UI state to empty list');
+      }
+      
+      // Then delete from Firebase
       await _notificationRepo.deleteAllNotifications(userId);
+      print('NotificationCubit: Successfully deleted all notifications from Firebase');
+      
+      // Ensure UI is in sync with backend
+      await initializeNotifications(userId);
+      print('NotificationCubit: Reinitialized notifications to ensure UI is in sync');
+      
     } catch (e) {
-      emit(NotificationError(e.toString()));
+      print('NotificationCubit: Error deleting all notifications: $e');
+      
+      // If there was an error, refresh notifications to ensure UI is in sync with backend
+      if (state is NotificationLoaded) {
+        final currentState = state as NotificationLoaded;
+        if (currentState.notifications.isNotEmpty) {
+          final userId = currentState.notifications.first.userId;
+          await initializeNotifications(userId);
+        }
+      }
+      
+      emit(NotificationError('Failed to delete all notifications: $e'));
     }
   }
 
@@ -344,6 +490,18 @@ class NotificationCubit extends Cubit<NotificationState> {
       }
     } else {
       print('NotificationCubit: No existing notification stream to refresh');
+    }
+  }
+
+  // Clear the displayed notifications history
+  Future<void> clearDisplayedNotificationsHistory() async {
+    try {
+      print('NotificationCubit: Clearing displayed notifications history');
+      _displayedNotificationIds.clear();
+      await _saveDisplayedNotifications();
+      print('NotificationCubit: Successfully cleared displayed notifications history');
+    } catch (e) {
+      print('NotificationCubit: Error clearing displayed notifications history: $e');
     }
   }
 }

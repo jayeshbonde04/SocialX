@@ -119,21 +119,37 @@ class _NotificationsPageState extends State<NotificationsPage> {
         actions: [
           BlocBuilder<NotificationCubit, NotificationState>(
             builder: (context, state) {
-              return IconButton(
-                onPressed: () {
-                  final currentUser = context.read<AuthCubit>().currentuser;
-                  if (currentUser != null) {
-                    context.read<NotificationCubit>().markAllAsRead(currentUser.uid);
-                  }
-                },
-                icon: const Icon(
-                  Icons.done_all_rounded,
-                  color: AppColors.accent,
-                ),
+              return Row(
+                children: [
+                  // Mark all as read button
+                  IconButton(
+                    onPressed: () {
+                      final currentUser = context.read<AuthCubit>().currentuser;
+                      if (currentUser != null) {
+                        context.read<NotificationCubit>().markAllAsRead(currentUser.uid);
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.done_all_rounded,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  // Delete all button
+                  if (state is NotificationLoaded && state.notifications.isNotEmpty)
+                    IconButton(
+                      onPressed: () {
+                        _showDeleteAllConfirmationDialog(context);
+                      },
+                      icon: const Icon(
+                        Icons.delete_sweep_rounded,
+                        color: Colors.red,
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                ],
               );
             },
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: BlocBuilder<NotificationCubit, NotificationState>(
@@ -215,44 +231,90 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       ),
                     ),
                     onDismissed: (direction) async {
-                      // Update UI state immediately
-                      final currentState = context.read<NotificationCubit>().state;
-                      if (currentState is NotificationLoaded) {
-                        final updatedNotifications = List<app_notification.Notification>.from(currentState.notifications)
-                          ..removeWhere((n) => n.id == notification.id);
-                        context.read<NotificationCubit>().emit(NotificationLoaded(updatedNotifications));
+                      // Store the notification for potential restoration
+                      final notificationToDelete = notification;
+                      
+                      try {
+                        // Show loading indicator
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Deleting notification...',
+                                  style: GoogleFonts.poppins(),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: Colors.blue.shade400,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            margin: const EdgeInsets.all(16),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                        
+                        // Delete from repository
+                        await context
+                            .read<NotificationCubit>()
+                            .deleteNotification(notification.id);
+                            
+                        if (!context.mounted) return;
+                        
+                        // Show success snackbar
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Notification deleted',
+                              style: GoogleFonts.poppins(),
+                            ),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () {
+                                // Restore the notification
+                                context.read<NotificationCubit>().restoreNotification(notificationToDelete);
+                              },
+                            ),
+                            backgroundColor: Colors.red.shade400,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            margin: const EdgeInsets.all(16),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        
+                        // Show error snackbar
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Failed to delete notification',
+                              style: GoogleFonts.poppins(),
+                            ),
+                            backgroundColor: Colors.red.shade400,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            margin: const EdgeInsets.all(16),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
                       }
-                      
-                      // Then delete from repository
-                      await context
-                          .read<NotificationCubit>()
-                          .deleteNotification(notification.id);
-                          
-                      if (!context.mounted) return;
-                      
-                      // Show undo snackbar
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Notification deleted',
-                            style: GoogleFonts.poppins(),
-                          ),
-                          action: SnackBarAction(
-                            label: 'Undo',
-                            onPressed: () {
-                              // Restore the notification
-                              context.read<NotificationCubit>().restoreNotification(notification);
-                            },
-                          ),
-                          backgroundColor: Colors.red.shade400,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          margin: const EdgeInsets.all(16),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
                     },
                     child: _buildNotificationTile(notification),
                   );
@@ -423,6 +485,123 @@ class _NotificationsPageState extends State<NotificationsPage> {
           context.read<NotificationCubit>().markAsRead(notification.id);
         }
       },
+    );
+  }
+
+  void _showDeleteAllConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Delete All Notifications',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete all notifications? This action cannot be undone.',
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              final currentUser = context.read<AuthCubit>().currentuser;
+              if (currentUser != null) {
+                try {
+                  // Show loading indicator
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Deleting all notifications...',
+                            style: GoogleFonts.poppins(),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.blue.shade400,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                  
+                  // Delete all notifications
+                  await context.read<NotificationCubit>().deleteAllNotifications(currentUser.uid);
+                  
+                  if (!context.mounted) return;
+                  
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'All notifications deleted',
+                        style: GoogleFonts.poppins(),
+                      ),
+                      backgroundColor: Colors.red.shade400,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to delete notifications: ${e.toString()}',
+                        style: GoogleFonts.poppins(),
+                      ),
+                      backgroundColor: Colors.red.shade400,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Delete All',
+              style: GoogleFonts.poppins(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

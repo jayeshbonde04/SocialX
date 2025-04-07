@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:socialx/features/notifications/domain/entities/notification.dart' as app_notification;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class InAppNotificationService {
   static final InAppNotificationService _instance = InAppNotificationService._internal();
@@ -32,6 +33,13 @@ class InAppNotificationService {
     final context = _context;
     if (context == null) {
       print('InAppNotificationService: No context available, cannot show notification');
+      return;
+    }
+    
+    // Verify that this notification is for the current user
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || currentUser.uid != notification.userId) {
+      print('InAppNotificationService: Notification is not for the current user, skipping display');
       return;
     }
     

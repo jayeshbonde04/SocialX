@@ -21,6 +21,7 @@ import 'package:socialx/features/search/presentation/pages/search_page.dart';
 import 'package:socialx/features/posts/presentation/pages/upload_post_page.dart';
 import 'package:socialx/features/posts/presentation/pages/twitter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:socialx/features/posts/domain/entities/comment.dart';
 
 // Text styles
 final TextStyle titleStyle = GoogleFonts.poppins(
@@ -189,8 +190,13 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showPostDialog(BuildContext context, Post post) {
     if (!mounted) return;
     
+    // Create a local copy of the post to avoid unnecessary state updates
+    Post localPost = post;
+    
+    // Use a more efficient dialog with less overhead
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.zero,
@@ -200,7 +206,7 @@ class _ProfilePageState extends State<ProfilePage> {
           color: AppColors.background,
           child: Column(
             children: [
-              // App bar with close button
+              // App bar with close button and delete option if post belongs to current user
               AppBar(
                 backgroundColor: AppColors.background,
                 leading: IconButton(
@@ -208,32 +214,80 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 title: Text(
-                  post.userName,
+                  localPost.userName,
                   style: TextStyle(color: AppColors.textPrimary),
                 ),
+                actions: [
+                  if (currentUser != null && localPost.userId == currentUser!.uid)
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: AppColors.error),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: AppColors.surface,
+                            title: Text(
+                              'Delete Post',
+                              style: TextStyle(color: AppColors.textPrimary),
+                            ),
+                            content: Text(
+                              'Are you sure you want to delete this post?',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(color: AppColors.textSecondary),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  context.read<PostCubit>().deletePost(localPost.id);
+                                  Navigator.pop(context); // Close delete confirmation
+                                  Navigator.pop(context); // Close post dialog
+                                },
+                                child: Text(
+                                  'Delete',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                ],
               ),
-              // Main image
+              // Main image - use CachedNetworkImage for better performance
               Expanded(
                 flex: 2,
                 child: InteractiveViewer(
                   minScale: 0.5,
                   maxScale: 4.0,
-                  child: post.imageUrl.isNotEmpty
-                      ? Image.network(
-                          post.imageUrl,
+                  child: localPost.imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: localPost.imageUrl,
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: AppColors.surface,
-                              child: const Center(
-                                child: Icon(
-                                  Icons.error_outline,
-                                  color: AppColors.error,
-                                  size: 48,
-                                ),
+                          placeholder: (context, url) => Container(
+                            color: AppColors.surface,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
                               ),
-                            );
-                          },
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: AppColors.surface,
+                            child: const Center(
+                              child: Icon(
+                                Icons.error_outline,
+                                color: AppColors.error,
+                                size: 48,
+                              ),
+                            ),
+                          ),
                         )
                       : Container(
                           color: AppColors.surface,
@@ -247,44 +301,212 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                 ),
               ),
-              // Post details and likes
+              // Post details and likes - use a more efficient layout
               Container(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Post text
-                    if (post.text.isNotEmpty)
-                      Text(
-                        post.text,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    // Likes section
+                    // Like and comment buttons
                     Row(
                       children: [
-                        const Icon(
-                          Icons.favorite,
-                          color: AppColors.error,
-                          size: 20,
+                        // Like button
+                        StatefulBuilder(
+                          builder: (context, setState) {
+                            return GestureDetector(
+                              onTap: () {
+                                // Check if user is logged in
+                                if (currentUser == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Please log in to like posts',
+                                        style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                      ),
+                                      backgroundColor: AppColors.surface,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      margin: const EdgeInsets.all(16),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                // Update local state immediately for better UX
+                                final bool isLiked = localPost.likes.contains(currentUser!.uid);
+                                setState(() {
+                                  if (isLiked) {
+                                    localPost.likes.remove(currentUser!.uid);
+                                  } else {
+                                    localPost.likes.add(currentUser!.uid);
+                                  }
+                                });
+
+                                // Toggle like in the background
+                                context.read<PostCubit>().toggleLikedPost(
+                                  localPost.id,
+                                  currentUser!.uid,
+                                ).then((_) {
+                                  if (!mounted) return;
+                                  
+                                  // Success message
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        isLiked ? 'Post unliked' : 'Post liked',
+                                        style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                      ),
+                                      backgroundColor: AppColors.surface,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      margin: const EdgeInsets.all(16),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }).catchError((error) {
+                                  // Revert local state if there's an error
+                                  setState(() {
+                                    if (isLiked) {
+                                      localPost.likes.add(currentUser!.uid);
+                                    } else {
+                                      localPost.likes.remove(currentUser!.uid);
+                                    }
+                                  });
+                                  
+                                  if (!mounted) return;
+                                  
+                                  // Error message
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to update like: $error',
+                                        style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                      ),
+                                      backgroundColor: AppColors.surface,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      margin: const EdgeInsets.all(16),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: localPost.likes.contains(currentUser?.uid ?? '') 
+                                      ? Colors.red.withOpacity(0.1) 
+                                      : AppColors.surface,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: localPost.likes.contains(currentUser?.uid ?? '') 
+                                        ? Colors.red.withOpacity(0.3) 
+                                        : AppColors.primary.withOpacity(0.1),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      localPost.likes.contains(currentUser?.uid ?? '') 
+                                          ? Icons.favorite 
+                                          : Icons.favorite_border,
+                                      color: localPost.likes.contains(currentUser?.uid ?? '') 
+                                          ? Colors.red 
+                                          : AppColors.textSecondary,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${localPost.likes.length}',
+                                      style: GoogleFonts.poppins(
+                                        color: localPost.likes.contains(currentUser?.uid ?? '') 
+                                            ? Colors.red 
+                                            : AppColors.textSecondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${post.likes.length} likes',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const SizedBox(width: 12),
+                        // Comment button
+                        StatefulBuilder(
+                          builder: (context, setState) {
+                            return GestureDetector(
+                              onTap: () => _showCommentDialog(context, localPost),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.chat_bubble_outline,
+                                      color: AppColors.textSecondary,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${localPost.comment.length}',
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    // Who liked the post
-                    if (post.likes.isNotEmpty)
+                    const SizedBox(height: 16),
+                    // Post text if available
+                    if (localPost.text.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          localPost.text,
+                          style: GoogleFonts.poppins(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    // Likes section - use a more efficient approach
+                    if (localPost.likes.isNotEmpty)
                       Container(
                         constraints: BoxConstraints(
                           maxHeight: MediaQuery.of(context).size.height * 0.2,
@@ -292,7 +514,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: SingleChildScrollView(
                           child: FutureBuilder<List<ProfileUser>>(
                             future: Future.wait(
-                              post.likes.map((userId) => profileCubit.getUserProfile(userId)),
+                              localPost.likes.map((userId) => profileCubit.getUserProfile(userId)),
                             ).then((users) => users.whereType<ProfileUser>().toList()),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -361,28 +583,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                     const SizedBox(height: 16),
-                    // Comments section
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.chat_bubble_outline,
-                          color: AppColors.textSecondary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${post.comment.length} comments',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Comments list
-                    if (post.comment.isNotEmpty)
+                    // Comments section - use a more efficient approach
+                    if (localPost.comment.isNotEmpty)
                       Container(
                         constraints: BoxConstraints(
                           maxHeight: MediaQuery.of(context).size.height * 0.3,
@@ -390,7 +592,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: SingleChildScrollView(
                           child: FutureBuilder<List<ProfileUser>>(
                             future: Future.wait(
-                              post.comment.map((comment) => profileCubit.getUserProfile(comment.userId)),
+                              localPost.comment.map((comment) => profileCubit.getUserProfile(comment.userId)),
                             ).then((users) => users.whereType<ProfileUser>().toList()),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -407,269 +609,340 @@ class _ProfilePageState extends State<ProfilePage> {
                               
                               final commenters = snapshot.data!;
                               return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: List.generate(post.comment.length, (index) {
-                                  final comment = post.comment[index];
-                                  final commenter = commenters.firstWhere(
-                                    (user) => user.uid == comment.userId,
-                                    orElse: () => ProfileUser(
-                                      uid: '',
-                                      name: 'Unknown User',
-                                      email: '',
-                                      profileImageUrl: '',
-                                      bio: '',
-                                      followers: [],
-                                      following: [],
-                                    ),
-                                  );
+                                children: localPost.comment.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final comment = entry.value;
+                                  final commenter = index < commenters.length ? commenters[index] : null;
                                   
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ProfilePage(uid: commenter.uid ?? ''),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.surface,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: AppColors.primary.withOpacity(0.1),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 16,
-                                            backgroundImage: commenter.profileImageUrl?.isNotEmpty == true
-                                                ? NetworkImage(commenter.profileImageUrl!)
-                                                : null,
-                                            child: commenter.profileImageUrl?.isEmpty == true
-                                                ? const Icon(Icons.person, size: 20, color: AppColors.textSecondary)
-                                                : null,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  commenter.name ?? 'Unknown User',
-                                                  style: const TextStyle(
-                                                    color: AppColors.textPrimary,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  comment.text,
-                                                  style: const TextStyle(
-                                                    color: AppColors.textSecondary,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppColors.primary.withOpacity(0.1),
+                                        width: 1,
                                       ),
                                     ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 16,
+                                          backgroundImage: commenter?.profileImageUrl?.isNotEmpty == true
+                                              ? NetworkImage(commenter!.profileImageUrl!)
+                                              : null,
+                                          child: commenter?.profileImageUrl?.isEmpty == true
+                                              ? const Icon(Icons.person, size: 20, color: AppColors.textSecondary)
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      commenter?.name ?? 'Unknown User',
+                                                      style: const TextStyle(
+                                                        color: AppColors.textPrimary,
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  // Delete comment button if current user is the commenter
+                                                  if (currentUser != null && comment.userId == currentUser!.uid)
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        showDialog(
+                                                          context: context,
+                                                          builder: (context) => AlertDialog(
+                                                            backgroundColor: AppColors.surface,
+                                                            title: Text(
+                                                              'Delete Comment',
+                                                              style: TextStyle(color: AppColors.textPrimary),
+                                                            ),
+                                                            content: Text(
+                                                              'Are you sure you want to delete this comment?',
+                                                              style: TextStyle(color: AppColors.textSecondary),
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () => Navigator.pop(context),
+                                                                child: Text(
+                                                                  'Cancel',
+                                                                  style: TextStyle(color: AppColors.textSecondary),
+                                                                ),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  // Update local state immediately
+                                                                  setState(() {
+                                                                    localPost.comment.removeWhere((c) => c.id == comment.id);
+                                                                  });
+                                                                  
+                                                                  Navigator.pop(context); // Close delete confirmation
+                                                                  
+                                                                  // Delete comment in the background
+                                                                  context.read<PostCubit>().deleteComment(
+                                                                    localPost.id,
+                                                                    comment.id,
+                                                                  ).then((_) {
+                                                                    if (!mounted) return;
+                                                                    
+                                                                    // Success message
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                      SnackBar(
+                                                                        content: Text(
+                                                                          'Comment deleted successfully',
+                                                                          style: TextStyle(color: AppColors.textPrimary),
+                                                                        ),
+                                                                        backgroundColor: AppColors.surface,
+                                                                        behavior: SnackBarBehavior.floating,
+                                                                        shape: RoundedRectangleBorder(
+                                                                          borderRadius: BorderRadius.circular(10),
+                                                                        ),
+                                                                        margin: const EdgeInsets.all(16),
+                                                                        duration: const Duration(seconds: 2),
+                                                                      ),
+                                                                    );
+                                                                  }).catchError((error) {
+                                                                    // Revert local state if there's an error
+                                                                    setState(() {
+                                                                      localPost.comment.add(comment);
+                                                                    });
+                                                                    
+                                                                    if (!mounted) return;
+                                                                    
+                                                                    // Error message
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                      SnackBar(
+                                                                        content: Text(
+                                                                          'Failed to delete comment: $error',
+                                                                          style: TextStyle(color: AppColors.textPrimary),
+                                                                        ),
+                                                                        backgroundColor: AppColors.surface,
+                                                                        behavior: SnackBarBehavior.floating,
+                                                                        shape: RoundedRectangleBorder(
+                                                                          borderRadius: BorderRadius.circular(10),
+                                                                        ),
+                                                                        margin: const EdgeInsets.all(16),
+                                                                        duration: const Duration(seconds: 2),
+                                                                      ),
+                                                                    );
+                                                                  });
+                                                                },
+                                                                child: Text(
+                                                                  'Delete',
+                                                                  style: TextStyle(color: AppColors.error),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      },
+                                                      child: const Icon(
+                                                        Icons.delete_outline,
+                                                        color: AppColors.error,
+                                                        size: 18,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                comment.text,
+                                                style: const TextStyle(
+                                                  color: AppColors.textPrimary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   );
-                                }),
+                                }).toList(),
                               );
                             },
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-              // Other posts by the same owner
-              Expanded(
-                child: Container(
-                  color: AppColors.background,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          'More posts by ${post.userName}',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: BlocBuilder<PostCubit, PostState>(
-                          builder: (context, state) {
-                            if (state is PostsLoading) {
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.primary,
+                    const SizedBox(height: 16),
+                    // Other posts by the same user - limit to a few posts for better performance
+                    Container(
+                      height: 100,
+                      child: BlocBuilder<PostCubit, PostState>(
+                        builder: (context, state) {
+                          if (state is PostsLoading) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            );
+                          }
+                          
+                          if (state is PostsLoaded) {
+                            final otherPosts = state.posts
+                                .where((p) => 
+                                    p.userId == localPost.userId && 
+                                    p.id != localPost.id &&
+                                    p.type != PostType.tweet)
+                                .take(5) // Limit to 5 posts for better performance
+                                .toList();
+                            
+                            if (otherPosts.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  'No other posts',
+                                  style: const TextStyle(color: AppColors.textSecondary),
                                 ),
                               );
                             }
                             
-                            if (state is PostsLoaded) {
-                              final otherPosts = state.posts
-                                  .where((p) => 
-                                      p.userId == post.userId && 
-                                      p.id != post.id &&
-                                      p.type != PostType.tweet)
-                                  .toList();
-                              
-                              if (otherPosts.isEmpty) {
-                                return Center(
-                                  child: Text(
-                                    'No other posts',
-                                    style: const TextStyle(color: AppColors.textSecondary),
-                                  ),
-                                );
-                              }
-                              
-                              return ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                itemCount: otherPosts.length,
-                                itemBuilder: (context, index) {
-                                  final otherPost = otherPosts[index];
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _showPostDialog(context, otherPost);
-                                    },
-                                    child: Container(
-                                      height: 80,
-                                      margin: const EdgeInsets.symmetric(vertical: 8),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        color: AppColors.surface,
-                                        border: Border.all(
-                                          color: AppColors.primary.withOpacity(0.1),
-                                          width: 1,
-                                        ),
+                            return ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              itemCount: otherPosts.length,
+                              itemBuilder: (context, index) {
+                                final otherPost = otherPosts[index];
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _showPostDialog(context, otherPost);
+                                  },
+                                  child: Container(
+                                    height: 80,
+                                    margin: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppColors.surface,
+                                      border: Border.all(
+                                        color: AppColors.primary.withOpacity(0.1),
+                                        width: 1,
                                       ),
-                                      child: Row(
-                                        children: [
-                                          // Post image
-                                          ClipRRect(
-                                            borderRadius: const BorderRadius.only(
-                                              topLeft: Radius.circular(8),
-                                              bottomLeft: Radius.circular(8),
-                                            ),
-                                            child: otherPost.imageUrl.isNotEmpty
-                                                ? Image.network(
-                                                    otherPost.imageUrl,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Post image - use CachedNetworkImage
+                                        ClipRRect(
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(8),
+                                            bottomLeft: Radius.circular(8),
+                                          ),
+                                          child: otherPost.imageUrl.isNotEmpty
+                                              ? CachedNetworkImage(
+                                                  imageUrl: otherPost.imageUrl,
+                                                  width: 80,
+                                                  height: 80,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (context, url) => Container(
                                                     width: 80,
                                                     height: 80,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) {
-                                                      return Container(
-                                                        width: 80,
-                                                        height: 80,
-                                                        color: AppColors.surface,
-                                                        child: const Icon(
-                                                          Icons.error_outline,
-                                                          color: AppColors.error,
-                                                        ),
-                                                      );
-                                                    },
-                                                  )
-                                                : Container(
+                                                    color: AppColors.surface,
+                                                    child: const Center(
+                                                      child: CircularProgressIndicator(
+                                                        color: AppColors.primary,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  errorWidget: (context, url, error) => Container(
                                                     width: 80,
                                                     height: 80,
                                                     color: AppColors.surface,
                                                     child: const Icon(
-                                                      Icons.image_not_supported,
+                                                      Icons.error_outline,
+                                                      color: AppColors.error,
+                                                    ),
+                                                  ),
+                                                )
+                                              : Container(
+                                                  width: 80,
+                                                  height: 80,
+                                                  color: AppColors.surface,
+                                                  child: const Icon(
+                                                    Icons.image_not_supported,
+                                                    color: AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                        ),
+                                        // Post details
+                                        Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  otherPost.text.isNotEmpty
+                                                      ? otherPost.text
+                                                      : 'Photo',
+                                                  style: const TextStyle(
+                                                    color: AppColors.textPrimary,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.favorite,
+                                                      color: Colors.red,
+                                                      size: 14,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '${otherPost.likes.length}',
+                                                      style: const TextStyle(
+                                                        color: AppColors.textSecondary,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    const Icon(
+                                                      Icons.chat_bubble_outline,
                                                       color: AppColors.textSecondary,
+                                                      size: 14,
                                                     ),
-                                                  ),
-                                          ),
-                                          // Post details
-                                          Expanded(
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(12.0),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    otherPost.text.isNotEmpty 
-                                                        ? otherPost.text 
-                                                        : 'No caption',
-                                                    style: const TextStyle(
-                                                      color: AppColors.textPrimary,
-                                                      fontSize: 14,
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '${otherPost.comment.length}',
+                                                      style: const TextStyle(
+                                                        color: AppColors.textSecondary,
+                                                        fontSize: 12,
+                                                      ),
                                                     ),
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons.favorite,
-                                                        color: AppColors.textSecondary,
-                                                        size: 16,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        '${otherPost.likes?.length ?? 0}',
-                                                        style: const TextStyle(
-                                                          color: AppColors.textSecondary,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      const Icon(
-                                                        Icons.comment,
-                                                        color: AppColors.textSecondary,
-                                                        size: 16,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        '${otherPost.comment.length}',
-                                                        style: const TextStyle(
-                                                          color: AppColors.textSecondary,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
+                                                  ],
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
-                                  );
-                                },
-                              );
-                            }
-                            
-                            return const Center(
-                              child: Text(
-                                'Failed to load posts',
-                                style: TextStyle(color: AppColors.textSecondary),
-                              ),
+                                  ),
+                                );
+                              },
                             );
-                          },
-                        ),
+                          }
+                          
+                          return const Center(
+                            child: Text(
+                              'Failed to load posts',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -700,11 +973,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    // Ensure we have the latest user data
-    await _initializeCurrentUser();
-    if (!mounted) return;
-
-    // Show comment dialog
+    // Show comment dialog without waiting for user data refresh
     final commentController = TextEditingController();
     
     showDialog(
@@ -760,6 +1029,52 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () {
               if (commentController.text.trim().isNotEmpty) {
+                // Create a local comment for immediate UI update
+                final newComment = Comment(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  userId: currentUser!.uid,
+                  postId: post.id,
+                  userName: currentUser!.name ?? 'Unknown User',
+                  text: commentController.text.trim(),
+                );
+                
+                // Update the post locally first
+                post.comment.add(newComment);
+                
+                // Close the dialog
+                Navigator.pop(context);
+                
+                // Show loading indicator
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: AppColors.textPrimary,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Adding comment...',
+                          style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: AppColors.surface,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+                
+                // Add comment in the background
                 context.read<PostCubit>()
                     .addComment(
                       post.id,
@@ -767,8 +1082,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       commentController.text.trim(),
                     )
                     .then((_) {
-                  Navigator.pop(context);
                   if (!mounted) return;
+                  
+                  // Success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -785,8 +1101,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   );
                 }).catchError((error) {
-                  Navigator.pop(context);
+                  // Remove the comment if there was an error
+                  post.comment.removeWhere((c) => c.id == newComment.id);
+                  
                   if (!mounted) return;
+                  
+                  // Error message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -944,27 +1264,27 @@ class _ProfilePageState extends State<ProfilePage> {
                             tag: 'profile_${user.uid}',
                             child: Container(
                               width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
                                 border: Border.all(
                                   color: AppColors.primary.withOpacity(0.2),
                                   width: 4,
                                 ),
-                          ),
+                              ),
                               child: ClipOval(
                                 child: user.profileImageUrl.isEmpty
                                     ? Container(
                                         color: AppColors.primary.withOpacity(0.1),
-                          child: const Icon(
-                            Icons.person_rounded,
+                                        child: const Icon(
+                                          Icons.person_rounded,
                                           size: 60,
                                           color: AppColors.primary,
                                         ),
                                       )
                                     : CachedNetworkImage(
                                         imageUrl: user.profileImageUrl,
-                              fit: BoxFit.cover,
+                                        fit: BoxFit.cover,
                                         placeholder: (context, url) => Container(
                                           color: AppColors.primary.withOpacity(0.1),
                                           child: const Center(
@@ -978,10 +1298,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                             Icons.error_outline_rounded,
                                             size: 40,
                                             color: AppColors.error,
-                          ),
-                        ),
-                      ),
-                    ),
+                                          ),
+                                        ),
+                                      ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -1179,97 +1499,97 @@ class _ProfilePageState extends State<ProfilePage> {
                           Container(
                             decoration: BoxDecoration(
                               color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: AppColors.primary.withOpacity(0.1),
                                 width: 1,
                               ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => setState(() => showPhotos = true),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: showPhotos
-                                            ? AppColors.primary
-                                      : Colors.transparent,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    bottomLeft: Radius.circular(12),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.photo_library_rounded,
-                                      color: showPhotos
-                                                ? Colors.white
-                                          : AppColors.textSecondary,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Photos',
-                                            style: GoogleFonts.poppins(
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => setState(() => showPhotos = true),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      decoration: BoxDecoration(
                                         color: showPhotos
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(12),
+                                          bottomLeft: Radius.circular(12),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.photo_library_rounded,
+                                            color: showPhotos
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Photos',
+                                            style: GoogleFonts.poppins(
+                                              color: showPhotos
                                                   ? Colors.white
-                                            : AppColors.textSecondary,
+                                                  : AppColors.textSecondary,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => setState(() => showPhotos = false),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: !showPhotos
-                                            ? AppColors.primary
-                                      : Colors.transparent,
-                                  borderRadius: const BorderRadius.only(
-                                    topRight: Radius.circular(12),
-                                    bottomRight: Radius.circular(12),
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.chat_bubble_outline_rounded,
-                                      color: !showPhotos
-                                                ? Colors.white
-                                          : AppColors.textSecondary,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Tweets',
-                                            style: GoogleFonts.poppins(
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => setState(() => showPhotos = false),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      decoration: BoxDecoration(
                                         color: !showPhotos
+                                            ? AppColors.primary
+                                            : Colors.transparent,
+                                        borderRadius: const BorderRadius.only(
+                                          topRight: Radius.circular(12),
+                                          bottomRight: Radius.circular(12),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.chat_bubble_outline_rounded,
+                                            color: !showPhotos
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Tweets',
+                                            style: GoogleFonts.poppins(
+                                              color: !showPhotos
                                                   ? Colors.white
-                                            : AppColors.textSecondary,
+                                                  : AppColors.textSecondary,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
                         ],
                       ),
                     ),
@@ -1380,55 +1700,31 @@ class _ProfilePageState extends State<ProfilePage> {
                                                     return;
                                                   }
 
-                                                  // Ensure we have the latest user data
-                                                  _initializeCurrentUser().then((_) {
+                                                  // Toggle like without waiting for user data refresh
+                                                  context.read<PostCubit>().toggleLikedPost(
+                                                    post.id,
+                                                    currentUser!.uid,
+                                                  ).then((_) {
                                                     if (!mounted) return;
                                                     
-                                                    // Toggle like
-                                                    context.read<PostCubit>().toggleLikedPost(
-                                                      post.id,
-                                                      currentUser!.uid,
-                                                    ).then((_) {
-                                                      if (!mounted) return;
-                                                      
-                                                      // Success message
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            post.likes.contains(currentUser!.uid)
-                                                                ? 'Post unliked'
-                                                                : 'Post liked',
-                                                            style: GoogleFonts.poppins(color: AppColors.textPrimary),
-                                                          ),
-                                                          backgroundColor: AppColors.surface,
-                                                          behavior: SnackBarBehavior.floating,
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius: BorderRadius.circular(10),
-                                                          ),
-                                                          margin: const EdgeInsets.all(16),
-                                                          duration: const Duration(seconds: 2),
+                                                    // Success message
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          post.likes.contains(currentUser!.uid)
+                                                              ? 'Post unliked'
+                                                              : 'Post liked',
+                                                          style: GoogleFonts.poppins(color: AppColors.textPrimary),
                                                         ),
-                                                      );
-                                                    }).catchError((error) {
-                                                      if (!mounted) return;
-                                                      
-                                                      // Error message
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            'Failed to update like: $error',
-                                                            style: GoogleFonts.poppins(color: AppColors.textPrimary),
-                                                          ),
-                                                          backgroundColor: AppColors.surface,
-                                                          behavior: SnackBarBehavior.floating,
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius: BorderRadius.circular(10),
-                                                          ),
-                                                          margin: const EdgeInsets.all(16),
-                                                          duration: const Duration(seconds: 2),
+                                                        backgroundColor: AppColors.surface,
+                                                        behavior: SnackBarBehavior.floating,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(10),
                                                         ),
-                                                      );
-                                                    });
+                                                        margin: const EdgeInsets.all(16),
+                                                        duration: const Duration(seconds: 2),
+                                                      ),
+                                                    );
                                                   });
                                                 },
                                                 child: Container(

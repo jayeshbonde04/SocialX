@@ -116,20 +116,33 @@ class FirebaseNotificationRepo implements NotificationRepo {
   @override
   Future<void> deleteAllNotifications(String userId) async {
     try {
+      print('FirebaseNotificationRepo: Deleting all notifications for user: $userId');
+      
+      // Get all notifications for the user
       final notifications = await _firestore
           .collection('notifications')
           .where('userId', isEqualTo: userId)
           .get();
-
+      
+      if (notifications.docs.isEmpty) {
+        print('FirebaseNotificationRepo: No notifications found for user: $userId');
+        return; // Silently return if no notifications exist
+      }
+      
+      print('FirebaseNotificationRepo: Found ${notifications.docs.length} notifications to delete');
+      
+      // Use a batch to delete all notifications in a single transaction
       final batch = _firestore.batch();
       for (var doc in notifications.docs) {
         batch.delete(doc.reference);
       }
-
+      
+      // Commit the batch
       await batch.commit();
+      print('FirebaseNotificationRepo: Successfully deleted all notifications for user: $userId');
     } catch (e) {
-      print('Error deleting all notifications: $e');
-      rethrow;
+      print('FirebaseNotificationRepo: Error deleting all notifications: $e');
+      throw Exception('Failed to delete all notifications: $e');
     }
   }
 

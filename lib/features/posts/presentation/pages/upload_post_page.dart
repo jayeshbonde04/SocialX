@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
@@ -12,7 +15,10 @@ import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:extended_image/extended_image.dart';
 import 'package:socialx/themes/app_colors.dart';
+import 'package:socialx/storage/domain/storage_repo.dart';
 
 // Dark mode color scheme
 const Color primaryColor = Color(0xFF1A1A1A);
@@ -54,6 +60,7 @@ class UploadPostPage extends StatefulWidget {
 class _UploadPostPageState extends State<UploadPostPage> {
   //mobile image pick
   PlatformFile? imagePickedFile;
+  XFile? pickedXFile;
 
   //web image pick
   Uint8List? webImage;
@@ -166,22 +173,40 @@ class _UploadPostPageState extends State<UploadPostPage> {
       );
 
       if (image != null && context.mounted) {
-        final editedImage = await _showImagePreviewAndEdit(image.path);
-        if (editedImage != null) {
-          Uint8List? imageBytes;
-          if (kIsWeb) {
-            imageBytes = await editedImage.readAsBytes();
+        // For camera captures, show the editor immediately
+        if (source == ImageSource.camera) {
+          final editedImage = await _showImageEditor(image.path);
+          if (editedImage != null && context.mounted) {
+            setState(() {
+              pickedXFile = editedImage;
+              imagePickedFile = PlatformFile(
+                name: editedImage.name,
+                path: editedImage.path,
+                size: File(editedImage.path).lengthSync(),
+                bytes: kIsWeb ? File(editedImage.path).readAsBytesSync() : null,
+              );
+              if (kIsWeb) {
+                webImage = imagePickedFile?.bytes;
+              }
+            });
           }
-          setState(() {
-            imagePickedFile = PlatformFile(
-              name: editedImage.name,
-              path: editedImage.path,
-              size: 0,
-            );
-            if (kIsWeb) {
-              webImage = imageBytes;
-            }
-          });
+        } else {
+          // For gallery images, show the preview dialog first
+          final editedImage = await _showPreviewDialog(image.path);
+          if (editedImage != null && context.mounted) {
+            setState(() {
+              pickedXFile = editedImage;
+              imagePickedFile = PlatformFile(
+                name: editedImage.name,
+                path: editedImage.path,
+                size: File(editedImage.path).lengthSync(),
+                bytes: kIsWeb ? File(editedImage.path).readAsBytesSync() : null,
+              );
+              if (kIsWeb) {
+                webImage = imagePickedFile?.bytes;
+              }
+            });
+          }
         }
       }
     } catch (e) {
@@ -199,8 +224,136 @@ class _UploadPostPageState extends State<UploadPostPage> {
     }
   }
 
-  Future<XFile?> _showImagePreviewAndEdit(String imagePath) async {
-    return showDialog<XFile>(
+  Future<XFile?> _showImageEditor(String imagePath) async {
+    try {
+      // Create a temporary file for the edited image
+      final String targetPath = '${imagePath}_edited.jpg';
+      final File editedFile = File(targetPath);
+      
+      // Show image editor
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => _SimpleImageEditorScreen(
+            imagePath: imagePath,
+            onSave: (Uint8List imageData) async {
+              try {
+                // Save the edited image data to a file
+                await editedFile.writeAsBytes(imageData);
+                
+                // Compress the edited image
+                final compressedPath = '${targetPath}_compressed.jpg';
+                final result = await FlutterImageCompress.compressAndGetFile(
+                  editedFile.path,
+                  compressedPath,
+                  quality: 85,
+                  minWidth: 800,
+                  minHeight: 800,
+                );
+                
+                if (result != null) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to compress image',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Error saving image: $e',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      );
+      
+      if (result == true) {
+        // Return the compressed image file
+        final compressedPath = '${targetPath}_compressed.jpg';
+        if (File(compressedPath).existsSync()) {
+          return XFile(compressedPath);
+        }
+      }
+    } catch (e) {
+      print('Error editing image: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error editing image: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+    return null;
+  }
+
+  Widget _buildFilterButton(String label, ColorFilter? filter, ColorFilter? currentFilter, Function(ColorFilter?) onFilterSelected, String imagePath) {
+    final bool isSelected = filter == currentFilter;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: GestureDetector(
+        onTap: () => onFilterSelected(filter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.primary.withOpacity(0.2),
+                  width: isSelected ? 3 : 2,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: ColorFiltered(
+                  colorFilter: filter ?? const ColorFilter.mode(
+                    Colors.transparent,
+                    BlendMode.srcOver,
+                  ),
+                  child: Image.file(
+                    File(imagePath),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<XFile?> _showPreviewDialog(String imagePath) async {
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: AppColors.surface,
@@ -210,19 +363,48 @@ class _UploadPostPageState extends State<UploadPostPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              height: 300,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                child: Image.file(
-                  File(imagePath),
-                  fit: BoxFit.cover,
+            Stack(
+              children: [
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    child: Image.file(
+                      File(imagePath),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-              ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          final editedImage = await _showImageEditor(imagePath);
+                          if (editedImage != null && context.mounted) {
+                            Navigator.pop(context, true);
+                          }
+                        },
+                        icon: Icon(
+                          Icons.edit,
+                          color: AppColors.primary,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.surface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -230,7 +412,7 @@ class _UploadPostPageState extends State<UploadPostPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context, false),
                     icon: Icon(Icons.close, color: AppColors.textPrimary),
                     label: Text(
                       'Cancel',
@@ -238,7 +420,7 @@ class _UploadPostPageState extends State<UploadPostPage> {
                     ),
                   ),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, XFile(imagePath)),
+                    onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -265,6 +447,8 @@ class _UploadPostPageState extends State<UploadPostPage> {
         ),
       ),
     );
+    
+    return result == true ? XFile(imagePath) : null;
   }
 
   //compress image
@@ -282,7 +466,7 @@ class _UploadPostPageState extends State<UploadPostPage> {
   // }
 
   //create & upload post
-  void uploadPost() {
+  void uploadPost() async {
     if (imagePickedFile == null || textEditingController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -296,21 +480,47 @@ class _UploadPostPageState extends State<UploadPostPage> {
       return;
     }
 
-    final newPost = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: currentUser!.uid,
-      userName: currentUser!.name,
-      text: textEditingController.text,
-      imageUrl: '',
-      timestamp: DateTime.now(),
-      likes: [],
-      comment: [],
-    );
+    try {
+      // Show loading state
+      setState(() {});
 
-    if (kIsWeb) {
-      context.read<PostCubit>().createPost(newPost, imageBytes: imagePickedFile?.bytes);
-    } else {
-      context.read<PostCubit>().createPost(newPost, imagePath: imagePickedFile?.path);
+      // Create post first
+      final newPost = Post(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: currentUser!.uid,
+        userName: currentUser!.name,
+        text: textEditingController.text,
+        imageUrl: '', // Initially empty
+        timestamp: DateTime.now(),
+        likes: [],
+        comment: [],
+      );
+
+      if (kIsWeb) {
+        // Upload image for web
+        await context.read<PostCubit>().createPost(
+          newPost,
+          imageBytes: imagePickedFile?.bytes,
+        );
+      } else {
+        // Upload image for mobile
+        await context.read<PostCubit>().createPost(
+          newPost,
+          imagePath: imagePickedFile?.path,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error creating post: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -513,6 +723,263 @@ class _UploadPostPageState extends State<UploadPostPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SimpleImageEditorScreen extends StatefulWidget {
+  final String imagePath;
+  final Function(Uint8List) onSave;
+
+  const _SimpleImageEditorScreen({
+    required this.imagePath,
+    required this.onSave,
+  });
+
+  @override
+  State<_SimpleImageEditorScreen> createState() => _SimpleImageEditorScreenState();
+}
+
+class _SimpleImageEditorScreenState extends State<_SimpleImageEditorScreen> {
+  ColorFilter? currentFilter;
+  double _scale = 1.0;
+  double _rotation = 0.0;
+  Offset _offset = Offset.zero;
+  Offset _startOffset = Offset.zero;
+  bool _isDragging = false;
+  final GlobalKey _imageKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        title: Text(
+          'Edit Image',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check, color: Colors.white),
+            onPressed: () async {
+              try {
+                // Capture the rendered image with the filter applied
+                final RenderRepaintBoundary boundary = _imageKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+                final image = await boundary.toImage(pixelRatio: 3.0);
+                final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                
+                if (byteData != null) {
+                  final Uint8List imageBytes = byteData.buffer.asUint8List();
+                  widget.onSave(imageBytes);
+                } else {
+                  throw Exception('Failed to capture image data');
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Error saving image: $e',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: RepaintBoundary(
+              key: _imageKey,
+              child: GestureDetector(
+                onScaleStart: (details) {
+                  setState(() {
+                    _isDragging = true;
+                    _startOffset = details.focalPoint;
+                  });
+                },
+                onScaleUpdate: (details) {
+                  setState(() {
+                    if (details.scale != 1.0) {
+                      _scale = (_scale * details.scale).clamp(0.5, 3.0);
+                    }
+                    
+                    if (details.rotation != 0.0) {
+                      _rotation += details.rotation;
+                    }
+                    
+                    if (_isDragging) {
+                      _offset += details.focalPoint - _startOffset;
+                      _startOffset = details.focalPoint;
+                    }
+                  });
+                },
+                onScaleEnd: (details) {
+                  setState(() {
+                    _isDragging = false;
+                  });
+                },
+                child: Center(
+                  child: Transform(
+                    transform: Matrix4.identity()
+                      ..scale(_scale)
+                      ..rotateZ(_rotation)
+                      ..translate(_offset.dx, _offset.dy),
+                    child: ColorFiltered(
+                      colorFilter: currentFilter ?? const ColorFilter.mode(
+                        Colors.transparent,
+                        BlendMode.srcOver,
+                      ),
+                      child: Image.file(
+                        File(widget.imagePath),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Container(
+            height: 100,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildFilterButton(
+                  'Normal',
+                  null,
+                  currentFilter,
+                  (filter) {
+                    setState(() {
+                      currentFilter = filter;
+                    });
+                  },
+                  widget.imagePath,
+                ),
+                _buildFilterButton(
+                  'Grayscale',
+                  ColorFilter.matrix([
+                    0.2126, 0.7152, 0.0722, 0, 0,
+                    0.2126, 0.7152, 0.0722, 0, 0,
+                    0.2126, 0.7152, 0.0722, 0, 0,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  currentFilter,
+                  (filter) {
+                    setState(() {
+                      currentFilter = filter;
+                    });
+                  },
+                  widget.imagePath,
+                ),
+                _buildFilterButton(
+                  'Sepia',
+                  ColorFilter.matrix([
+                    0.393, 0.769, 0.189, 0, 0,
+                    0.349, 0.686, 0.168, 0, 0,
+                    0.272, 0.534, 0.131, 0, 0,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  currentFilter,
+                  (filter) {
+                    setState(() {
+                      currentFilter = filter;
+                    });
+                  },
+                  widget.imagePath,
+                ),
+                _buildFilterButton(
+                  'Invert',
+                  ColorFilter.matrix([
+                    -1, 0, 0, 0, 255,
+                    0, -1, 0, 0, 255,
+                    0, 0, -1, 0, 255,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  currentFilter,
+                  (filter) {
+                    setState(() {
+                      currentFilter = filter;
+                    });
+                  },
+                  widget.imagePath,
+                ),
+                _buildFilterButton(
+                  'Brightness',
+                  ColorFilter.matrix([
+                    1.2, 0, 0, 0, 0,
+                    0, 1.2, 0, 0, 0,
+                    0, 0, 1.2, 0, 0,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  currentFilter,
+                  (filter) {
+                    setState(() {
+                      currentFilter = filter;
+                    });
+                  },
+                  widget.imagePath,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(String label, ColorFilter? filter, ColorFilter? currentFilter, Function(ColorFilter?) onFilterSelected, String imagePath) {
+    final bool isSelected = filter == currentFilter;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: GestureDetector(
+        onTap: () => onFilterSelected(filter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.primary.withOpacity(0.2),
+                  width: isSelected ? 3 : 2,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: ColorFiltered(
+                  colorFilter: filter ?? const ColorFilter.mode(
+                    Colors.transparent,
+                    BlendMode.srcOver,
+                  ),
+                  child: Image.file(
+                    File(imagePath),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );

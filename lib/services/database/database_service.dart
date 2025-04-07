@@ -266,7 +266,7 @@ MESSAGING FEATURE
           .collection("messages")
           .add(newMessage.toMap());
 
-      // Create notification for the receiver
+      // Create notification for the receiver only
       await _db.collection("notifications").add({
         'id': DateTime.now().millisecondsSinceEpoch.toString(),
         'userId': receiverID,

@@ -111,11 +111,11 @@ class FirebaseProfileRepo implements ProfileRepo {
           }),
         ]);
 
-        // Create unfollow notification
+        // Create unfollow notification - only for the user being unfollowed
         final currentUserName = currentUserData['name'] ?? 'Someone';
         await firebaseFirestore.collection('notifications').add({
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
-          'userId': targetUserId,
+          'userId': targetUserId, // This is correct - notification goes to the user being unfollowed
           'actorId': currentUserId,
           'type': 'unfollow',
           'timestamp': FieldValue.serverTimestamp(),
@@ -136,11 +136,11 @@ class FirebaseProfileRepo implements ProfileRepo {
               'followRequests': followRequests,
             });
 
-            // Create follow request notification
+            // Create follow request notification - only for the user being requested
             final currentUserName = currentUserData['name'] ?? 'Someone';
             await firebaseFirestore.collection('notifications').add({
               'id': DateTime.now().millisecondsSinceEpoch.toString(),
-              'userId': targetUserId,
+              'userId': targetUserId, // This is correct - notification goes to the user being requested
               'actorId': currentUserId,
               'type': 'followRequest',
               'timestamp': FieldValue.serverTimestamp(),
@@ -165,11 +165,11 @@ class FirebaseProfileRepo implements ProfileRepo {
             }),
           ]);
 
-          // Create follow notification
+          // Create follow notification - only for the user being followed
           final currentUserName = currentUserData['name'] ?? 'Someone';
           await firebaseFirestore.collection('notifications').add({
             'id': DateTime.now().millisecondsSinceEpoch.toString(),
-            'userId': targetUserId,
+            'userId': targetUserId, // This is correct - notification goes to the user being followed
             'actorId': currentUserId,
             'type': 'follow',
             'timestamp': FieldValue.serverTimestamp(),
@@ -213,11 +213,11 @@ class FirebaseProfileRepo implements ProfileRepo {
         targetFollowers.add(currentUserId);
         currentFollowing.add(targetUserId);
 
-        // Create follow notification
+        // Create follow notification - only for the user who requested to follow
         final targetUserName = targetUserData['name'] ?? 'Someone';
         await firebaseFirestore.collection('notifications').add({
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
-          'userId': currentUserId,
+          'userId': currentUserId, // This is correct - notification goes to the user who requested to follow
           'actorId': targetUserId,
           'type': 'follow',
           'timestamp': FieldValue.serverTimestamp(),

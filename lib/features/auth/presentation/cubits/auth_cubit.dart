@@ -6,12 +6,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_state.dart';
 import 'package:socialx/features/auth/domain/repos/auth_repo.dart';
+import 'package:socialx/features/notifications/presentation/cubits/notification_cubit.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepo authRepo;
+  final NotificationCubit notificationCubit;
   AppUsers? _currentUser;
 
-  AuthCubit({required this.authRepo}) : super(AuthInitial());
+  AuthCubit({
+    required this.authRepo,
+    required this.notificationCubit,
+  }) : super(AuthInitial());
 
   //check if user is already authenticated
   void checkAuth() async {
@@ -71,6 +76,8 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthLoading());
       await authRepo.logout();
       _currentUser = null;
+      // Clear displayed notifications history
+      await notificationCubit.clearDisplayedNotificationsHistory();
       emit(AuthSuccess('Logged out successfully'));
       emit(Unauthenticated());
     } catch (e) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:socialx/features/notifications/domain/entities/notification.dart' as app_notification;
 import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LocalNotificationService {
   static final LocalNotificationService _instance = LocalNotificationService._internal();
@@ -45,6 +46,13 @@ class LocalNotificationService {
 
   Future<void> showNotification(app_notification.Notification notification) async {
     print('LocalNotificationService: Showing notification for: ${notification.id}');
+    
+    // Verify that this notification is for the current user
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || currentUser.uid != notification.userId) {
+      print('LocalNotificationService: Notification is not for the current user, skipping display');
+      return;
+    }
     
     // Get notification details based on type
     final String title = _getNotificationTitle(notification);

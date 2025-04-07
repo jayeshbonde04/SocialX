@@ -50,10 +50,16 @@ class MyApp extends StatelessWidget {
 
         return MultiBlocProvider(
           providers: [
+            // Provide notification cubit
+            BlocProvider<NotificationCubit>(
+                create: (context) => NotificationCubit(firebaseNotificationRepo)),
+
             // Provide authentication cubit
             BlocProvider<AuthCubit>(
-                create: (context) =>
-                    AuthCubit(authRepo: firebaseAuthRepo)..checkAuth()),
+                create: (context) => AuthCubit(
+                  authRepo: firebaseAuthRepo,
+                  notificationCubit: context.read<NotificationCubit>(),
+                )..checkAuth()),
 
             // Provide profile cubit
             BlocProvider<ProfileCubit>(
@@ -61,10 +67,6 @@ class MyApp extends StatelessWidget {
                     profileRepo: firebaseProfileRepo,
                     storageRepo: firebaseStorageRepo,
                     authCubit: context.read<AuthCubit>())),
-
-            // Provide notification cubit
-            BlocProvider<NotificationCubit>(
-                create: (context) => NotificationCubit(firebaseNotificationRepo)),
 
             // Provide post cubit
             BlocProvider<PostCubit>(
