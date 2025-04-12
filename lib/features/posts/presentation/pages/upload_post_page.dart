@@ -9,14 +9,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
-import 'package:socialx/features/auth/presentation/components/my_textfield.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:extended_image/extended_image.dart';
 import 'package:socialx/themes/app_colors.dart';
 import 'package:socialx/storage/domain/storage_repo.dart';
 
@@ -484,31 +482,37 @@ class _UploadPostPageState extends State<UploadPostPage> {
       // Show loading state
       setState(() {});
 
-      // Create post first
+      String? imageUrl;
+      if (kIsWeb) {
+        // Upload image for web
+        imageUrl = await context.read<StorageRepo>().uploadPostImageWeb(
+          imagePickedFile!.bytes!,
+          'posts/${DateTime.now().millisecondsSinceEpoch}.jpg'
+        );
+      } else {
+        // Upload image for mobile
+        imageUrl = await context.read<StorageRepo>().uploadPostImageMobile(
+          imagePickedFile!.path!,
+          'posts/${DateTime.now().millisecondsSinceEpoch}.jpg'
+        );
+      }
+
+      if (imageUrl == null) {
+        throw Exception('Failed to upload image');
+      }
+
       final newPost = Post(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: currentUser!.uid,
         userName: currentUser!.name,
         text: textEditingController.text,
-        imageUrl: '', // Initially empty
+        imageUrl: imageUrl, // Set the image URL from upload
         timestamp: DateTime.now(),
         likes: [],
         comment: [],
       );
 
-      if (kIsWeb) {
-        // Upload image for web
-        await context.read<PostCubit>().createPost(
-          newPost,
-          imageBytes: imagePickedFile?.bytes,
-        );
-      } else {
-        // Upload image for mobile
-        await context.read<PostCubit>().createPost(
-          newPost,
-          imagePath: imagePickedFile?.path,
-        );
-      }
+      await context.read<PostCubit>().createPost(newPost);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

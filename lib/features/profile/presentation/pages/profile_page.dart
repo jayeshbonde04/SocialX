@@ -279,14 +279,14 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           errorWidget: (context, url, error) => Container(
-                            color: AppColors.surface,
-                            child: const Center(
-                              child: Icon(
-                                Icons.error_outline,
-                                color: AppColors.error,
-                                size: 48,
+                              color: AppColors.surface,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 48,
+                                ),
                               ),
-                            ),
                           ),
                         )
                       : Container(
@@ -425,7 +425,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       size: 18,
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(
+                      Text(
                                       '${localPost.likes.length}',
                                       style: GoogleFonts.poppins(
                                         color: localPost.likes.contains(currentUser?.uid ?? '') 
@@ -459,23 +459,23 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
+                      children: [
+                        const Icon(
                                       Icons.chat_bubble_outline,
                                       color: AppColors.textSecondary,
                                       size: 18,
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(
+                        Text(
                                       '${localPost.comment.length}',
                                       style: GoogleFonts.poppins(
                                         color: AppColors.textSecondary,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          ),
+                        ),
+                      ],
+                    ),
                               ),
                             );
                           },
@@ -616,41 +616,41 @@ class _ProfilePageState extends State<ProfilePage> {
                                   
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 12),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: AppColors.primary.withOpacity(0.1),
-                                        width: 1,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppColors.primary.withOpacity(0.1),
+                                          width: 1,
+                                        ),
                                       ),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 16,
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 16,
                                           backgroundImage: commenter?.profileImageUrl?.isNotEmpty == true
                                               ? NetworkImage(commenter!.profileImageUrl!)
-                                              : null,
+                                                : null,
                                           child: commenter?.profileImageUrl?.isEmpty == true
-                                              ? const Icon(Icons.person, size: 20, color: AppColors.textSecondary)
-                                              : null,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
+                                                ? const Icon(Icons.person, size: 20, color: AppColors.textSecondary)
+                                                : null,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
                                               Row(
                                                 children: [
                                                   Expanded(
                                                     child: Text(
                                                       commenter?.name ?? 'Unknown User',
-                                                      style: const TextStyle(
-                                                        color: AppColors.textPrimary,
+                                                  style: const TextStyle(
+                                                    color: AppColors.textPrimary,
                                                         fontWeight: FontWeight.w600,
-                                                        fontSize: 14,
+                                                    fontSize: 14,
                                                       ),
                                                     ),
                                                   ),
@@ -739,10 +739,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                                                 child: Text(
                                                                   'Delete',
                                                                   style: TextStyle(color: AppColors.error),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
+                        ),
+                      ),
+                  ],
+                ),
                                                         );
                                                       },
                                                       child: const Icon(
@@ -756,8 +756,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                               const SizedBox(height: 4),
                                               Text(
                                                 comment.text,
-                                                style: const TextStyle(
-                                                  color: AppColors.textPrimary,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
                                                   fontSize: 14,
                                                 ),
                                               ),
@@ -777,69 +777,69 @@ class _ProfilePageState extends State<ProfilePage> {
                     // Other posts by the same user - limit to a few posts for better performance
                     Container(
                       height: 100,
-                      child: BlocBuilder<PostCubit, PostState>(
-                        builder: (context, state) {
-                          if (state is PostsLoading) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                              ),
-                            );
-                          }
-                          
-                          if (state is PostsLoaded) {
-                            final otherPosts = state.posts
-                                .where((p) => 
-                                    p.userId == localPost.userId && 
-                                    p.id != localPost.id &&
-                                    p.type != PostType.tweet)
-                                .take(5) // Limit to 5 posts for better performance
-                                .toList();
-                            
-                            if (otherPosts.isEmpty) {
-                              return Center(
-                                child: Text(
-                                  'No other posts',
-                                  style: const TextStyle(color: AppColors.textSecondary),
+                        child: BlocBuilder<PostCubit, PostState>(
+                          builder: (context, state) {
+                            if (state is PostsLoading) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
                                 ),
                               );
                             }
                             
-                            return ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              itemCount: otherPosts.length,
-                              itemBuilder: (context, index) {
-                                final otherPost = otherPosts[index];
-                                return GestureDetector(
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _showPostDialog(context, otherPost);
-                                  },
-                                  child: Container(
-                                    height: 80,
-                                    margin: const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      color: AppColors.surface,
-                                      border: Border.all(
-                                        color: AppColors.primary.withOpacity(0.1),
-                                        width: 1,
+                            if (state is PostsLoaded) {
+                              final otherPosts = state.posts
+                                  .where((p) => 
+                                    p.userId == localPost.userId && 
+                                    p.id != localPost.id &&
+                                      p.type != PostType.tweet)
+                                .take(5) // Limit to 5 posts for better performance
+                                  .toList();
+                              
+                              if (otherPosts.isEmpty) {
+                                return Center(
+                                  child: Text(
+                                    'No other posts',
+                                    style: const TextStyle(color: AppColors.textSecondary),
+                                  ),
+                                );
+                              }
+                              
+                              return ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                itemCount: otherPosts.length,
+                                itemBuilder: (context, index) {
+                                  final otherPost = otherPosts[index];
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _showPostDialog(context, otherPost);
+                                    },
+                                    child: Container(
+                                      height: 80,
+                                      margin: const EdgeInsets.symmetric(vertical: 8),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        color: AppColors.surface,
+                                        border: Border.all(
+                                          color: AppColors.primary.withOpacity(0.1),
+                                          width: 1,
+                                        ),
                                       ),
-                                    ),
-                                    child: Row(
-                                      children: [
+                                      child: Row(
+                                        children: [
                                         // Post image - use CachedNetworkImage
-                                        ClipRRect(
-                                          borderRadius: const BorderRadius.only(
-                                            topLeft: Radius.circular(8),
-                                            bottomLeft: Radius.circular(8),
-                                          ),
-                                          child: otherPost.imageUrl.isNotEmpty
+                                          ClipRRect(
+                                            borderRadius: const BorderRadius.only(
+                                              topLeft: Radius.circular(8),
+                                              bottomLeft: Radius.circular(8),
+                                            ),
+                                            child: otherPost.imageUrl.isNotEmpty
                                               ? CachedNetworkImage(
                                                   imageUrl: otherPost.imageUrl,
-                                                  width: 80,
-                                                  height: 80,
-                                                  fit: BoxFit.cover,
+                                                    width: 80,
+                                                    height: 80,
+                                                    fit: BoxFit.cover,
                                                   placeholder: (context, url) => Container(
                                                     width: 80,
                                                     height: 80,
@@ -851,98 +851,98 @@ class _ProfilePageState extends State<ProfilePage> {
                                                     ),
                                                   ),
                                                   errorWidget: (context, url, error) => Container(
+                                                        width: 80,
+                                                        height: 80,
+                                                        color: AppColors.surface,
+                                                        child: const Icon(
+                                                          Icons.error_outline,
+                                                          color: AppColors.error,
+                                                        ),
+                                                  ),
+                                                  )
+                                                : Container(
                                                     width: 80,
                                                     height: 80,
                                                     color: AppColors.surface,
                                                     child: const Icon(
-                                                      Icons.error_outline,
-                                                      color: AppColors.error,
+                                                      Icons.image_not_supported,
+                                                      color: AppColors.textSecondary,
                                                     ),
                                                   ),
-                                                )
-                                              : Container(
-                                                  width: 80,
-                                                  height: 80,
-                                                  color: AppColors.surface,
-                                                  child: const Icon(
-                                                    Icons.image_not_supported,
-                                                    color: AppColors.textSecondary,
-                                                  ),
-                                                ),
-                                        ),
-                                        // Post details
-                                        Expanded(
-                                          child: Padding(
+                                          ),
+                                          // Post details
+                                          Expanded(
+                                            child: Padding(
                                             padding: const EdgeInsets.all(8.0),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  otherPost.text.isNotEmpty
-                                                      ? otherPost.text
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    otherPost.text.isNotEmpty 
+                                                        ? otherPost.text 
                                                       : 'Photo',
-                                                  style: const TextStyle(
-                                                    color: AppColors.textPrimary,
+                                                    style: const TextStyle(
+                                                      color: AppColors.textPrimary,
                                                     fontWeight: FontWeight.w500,
-                                                  ),
+                                                    ),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.favorite,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.favorite,
                                                       color: Colors.red,
                                                       size: 14,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
                                                       '${otherPost.likes.length}',
-                                                      style: const TextStyle(
-                                                        color: AppColors.textSecondary,
-                                                        fontSize: 12,
+                                                        style: const TextStyle(
+                                                          color: AppColors.textSecondary,
+                                                          fontSize: 12,
+                                                        ),
                                                       ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    const Icon(
+                                                      const SizedBox(width: 12),
+                                                      const Icon(
                                                       Icons.chat_bubble_outline,
-                                                      color: AppColors.textSecondary,
-                                                      size: 14,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      '${otherPost.comment.length}',
-                                                      style: const TextStyle(
                                                         color: AppColors.textSecondary,
-                                                        fontSize: 12,
+                                                      size: 14,
                                                       ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        '${otherPost.comment.length}',
+                                                        style: const TextStyle(
+                                                          color: AppColors.textSecondary,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              );
+                            }
+                            
+                            return const Center(
+                              child: Text(
+                                'Failed to load posts',
+                                style: TextStyle(color: AppColors.textSecondary),
+                              ),
                             );
-                          }
-                          
-                          return const Center(
-                            child: Text(
-                              'Failed to load posts',
-                              style: TextStyle(color: AppColors.textSecondary),
-                            ),
-                          );
-                        },
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
                 ),
               ),
             ],
@@ -1264,27 +1264,27 @@ class _ProfilePageState extends State<ProfilePage> {
                             tag: 'profile_${user.uid}',
                             child: Container(
                               width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
                                 border: Border.all(
                                   color: AppColors.primary.withOpacity(0.2),
                                   width: 4,
                                 ),
-                              ),
+                          ),
                               child: ClipOval(
                                 child: user.profileImageUrl.isEmpty
                                     ? Container(
                                         color: AppColors.primary.withOpacity(0.1),
-                                        child: const Icon(
-                                          Icons.person_rounded,
+                          child: const Icon(
+                            Icons.person_rounded,
                                           size: 60,
                                           color: AppColors.primary,
                                         ),
                                       )
                                     : CachedNetworkImage(
                                         imageUrl: user.profileImageUrl,
-                                        fit: BoxFit.cover,
+                              fit: BoxFit.cover,
                                         placeholder: (context, url) => Container(
                                           color: AppColors.primary.withOpacity(0.1),
                                           child: const Center(
@@ -1298,10 +1298,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                             Icons.error_outline_rounded,
                                             size: 40,
                                             color: AppColors.error,
-                                          ),
-                                        ),
-                                      ),
-                              ),
+                          ),
+                        ),
+                      ),
+                    ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -1499,97 +1499,97 @@ class _ProfilePageState extends State<ProfilePage> {
                           Container(
                             decoration: BoxDecoration(
                               color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: AppColors.primary.withOpacity(0.1),
                                 width: 1,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () => setState(() => showPhotos = true),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      decoration: BoxDecoration(
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => showPhotos = true),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: showPhotos
+                                            ? AppColors.primary
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.photo_library_rounded,
+                                      color: showPhotos
+                                                ? Colors.white
+                                          : AppColors.textSecondary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Photos',
+                                            style: GoogleFonts.poppins(
                                         color: showPhotos
-                                            ? AppColors.primary
-                                            : Colors.transparent,
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(12),
-                                          bottomLeft: Radius.circular(12),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.photo_library_rounded,
-                                            color: showPhotos
-                                                ? Colors.white
-                                                : AppColors.textSecondary,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Photos',
-                                            style: GoogleFonts.poppins(
-                                              color: showPhotos
                                                   ? Colors.white
-                                                  : AppColors.textSecondary,
+                                            : AppColors.textSecondary,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () => setState(() => showPhotos = false),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      decoration: BoxDecoration(
-                                        color: !showPhotos
-                                            ? AppColors.primary
-                                            : Colors.transparent,
-                                        borderRadius: const BorderRadius.only(
-                                          topRight: Radius.circular(12),
-                                          bottomRight: Radius.circular(12),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.chat_bubble_outline_rounded,
-                                            color: !showPhotos
-                                                ? Colors.white
-                                                : AppColors.textSecondary,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Tweets',
-                                            style: GoogleFonts.poppins(
-                                              color: !showPhotos
-                                                  ? Colors.white
-                                                  : AppColors.textSecondary,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => showPhotos = false),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: !showPhotos
+                                            ? AppColors.primary
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      color: !showPhotos
+                                                ? Colors.white
+                                          : AppColors.textSecondary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Tweets',
+                                            style: GoogleFonts.poppins(
+                                        color: !showPhotos
+                                                  ? Colors.white
+                                            : AppColors.textSecondary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                         ],
                       ),
                     ),
@@ -1701,30 +1701,30 @@ class _ProfilePageState extends State<ProfilePage> {
                                                   }
 
                                                   // Toggle like without waiting for user data refresh
-                                                  context.read<PostCubit>().toggleLikedPost(
-                                                    post.id,
-                                                    currentUser!.uid,
-                                                  ).then((_) {
-                                                    if (!mounted) return;
-                                                    
-                                                    // Success message
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          post.likes.contains(currentUser!.uid)
-                                                              ? 'Post unliked'
-                                                              : 'Post liked',
-                                                          style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                                    context.read<PostCubit>().toggleLikedPost(
+                                                      post.id,
+                                                      currentUser!.uid,
+                                                    ).then((_) {
+                                                      if (!mounted) return;
+                                                      
+                                                      // Success message
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            post.likes.contains(currentUser!.uid)
+                                                                ? 'Post unliked'
+                                                                : 'Post liked',
+                                                            style: GoogleFonts.poppins(color: AppColors.textPrimary),
+                                                          ),
+                                                          backgroundColor: AppColors.surface,
+                                                          behavior: SnackBarBehavior.floating,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(10),
+                                                          ),
+                                                          margin: const EdgeInsets.all(16),
+                                                          duration: const Duration(seconds: 2),
                                                         ),
-                                                        backgroundColor: AppColors.surface,
-                                                        behavior: SnackBarBehavior.floating,
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(10),
-                                                        ),
-                                                        margin: const EdgeInsets.all(16),
-                                                        duration: const Duration(seconds: 2),
-                                                      ),
-                                                    );
+                                                      );
                                                   });
                                                 },
                                                 child: Container(
