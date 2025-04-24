@@ -9,16 +9,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:socialx/features/auth/domain/entities/app_users.dart';
-import 'package:socialx/features/auth/presentation/components/my_textfield.dart';
 import 'package:socialx/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:socialx/features/posts/domain/entities/post.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_cubit.dart';
 import 'package:socialx/features/posts/presentation/cubits/post_states.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:extended_image/extended_image.dart';
+
 import 'package:socialx/themes/app_colors.dart';
-import 'package:socialx/storage/domain/storage_repo.dart';
 
 // Dark mode color scheme
 const Color primaryColor = Color(0xFF1A1A1A);
@@ -304,54 +302,6 @@ class _UploadPostPageState extends State<UploadPostPage> {
     return null;
   }
 
-  Widget _buildFilterButton(String label, ColorFilter? filter, ColorFilter? currentFilter, Function(ColorFilter?) onFilterSelected, String imagePath) {
-    final bool isSelected = filter == currentFilter;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: GestureDetector(
-        onTap: () => onFilterSelected(filter),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.primary.withOpacity(0.2),
-                  width: isSelected ? 3 : 2,
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: ColorFiltered(
-                  colorFilter: filter ?? const ColorFilter.mode(
-                    Colors.transparent,
-                    BlendMode.srcOver,
-                  ),
-                  child: Image.file(
-                    File(imagePath),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<XFile?> _showPreviewDialog(String imagePath) async {
     final result = await showDialog<bool>(
       context: context,
@@ -379,31 +329,7 @@ class _UploadPostPageState extends State<UploadPostPage> {
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          final editedImage = await _showImageEditor(imagePath);
-                          if (editedImage != null && context.mounted) {
-                            Navigator.pop(context, true);
-                          }
-                        },
-                        icon: Icon(
-                          Icons.edit,
-                          color: AppColors.primary,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppColors.surface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Removed the Positioned widget containing the edit button
               ],
             ),
             Padding(
@@ -450,20 +376,6 @@ class _UploadPostPageState extends State<UploadPostPage> {
     
     return result == true ? XFile(imagePath) : null;
   }
-
-  //compress image
-  // Future<void> compressImage() async {
-  //   final result = await FlutterImageCompress.compressWithFile(
-  //     imagePickedFile!.path!,
-  //     minWidth: 800,
-  //     minHeight: 800,
-  //     quality: 80,
-  //   );
-  //
-  //   setState(() {
-  //     webImage = result;
-  //   });
-  // }
 
   //create & upload post
   void uploadPost() async {
